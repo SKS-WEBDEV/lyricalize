@@ -80,7 +80,8 @@ function runSetupCommands() {
     const commands = [
     "bun add usehooks-ts@^3.1.0",
     "bun add react-dropzone@^14.2.3",
-    "bun add lucide-react@latest"
+    "bun add lucide-react@latest",
+    "bun install lucide-react@latest"
 ];
     
     if (commands.length === 0) {
