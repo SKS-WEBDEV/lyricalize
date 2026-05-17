@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { toast } from 'sonner';
 import { safeError } from '@/lib/utils';
+import { logger } from '@/utils/logger';
 export function useAudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number>(0);
