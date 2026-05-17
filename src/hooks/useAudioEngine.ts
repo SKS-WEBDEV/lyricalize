@@ -5,42 +5,48 @@ import { safeError } from '@/lib/utils';
 export function useAudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number>(0);
-  const syncStateRef = useRef({ currentTime: 0, isPlaying: false });
-  // Strictly primitive selectors to avoid getSnapshot issues
-  const isPlaying = useEditorStore((s) => s.isPlaying);
-  const volume = useEditorStore((s) => s.volume);
-  const isMuted = useEditorStore((s) => s.isMuted);
-  const trackUrl = useEditorStore((s) => s.track?.url);
-  const trackId = useEditorStore((s) => s.track?.id);
-  const currentTime = useEditorStore((s) => s.currentTime);
-  const setIsPlaying = useEditorStore((s) => s.setIsPlaying);
-  const setCurrentTime = useEditorStore((s) => s.setCurrentTime);
-  const setDuration = useEditorStore((s) => s.setDuration);
-  const setIsBuffering = useEditorStore((s) => s.setIsBuffering);
-  useEffect(() => {
-    syncStateRef.current = { currentTime, isPlaying };
-  }, [currentTime, isPlaying]);
+  // High-frequency values are tracked in refs to avoid reactive dependency loops
+  const syncStateRef = useRef({ 
+    currentTime: 0, 
+    isPlaying: false,
+    duration: 0
+  });
+  // Access actions directly from store for non-reactive use
+  const { 
+    setIsPlaying, 
+    setCurrentTime, 
+    setDuration, 
+    setIsBuffering 
+  } = useEditorStore.getState();
+  // Initialization: Setup audio element and event listeners
   useEffect(() => {
     const audio = new Audio();
     audio.crossOrigin = "anonymous";
     audioRef.current = audio;
-    const onPlay = () => setIsPlaying(true);
-    const onPause = () => setIsPlaying(false);
+    const onPlay = () => {
+      syncStateRef.current.isPlaying = true;
+      useEditorStore.getState().setIsPlaying(true);
+    };
+    const onPause = () => {
+      syncStateRef.current.isPlaying = false;
+      useEditorStore.getState().setIsPlaying(false);
+    };
     const onEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
+      syncStateRef.current.isPlaying = false;
+      useEditorStore.getState().setIsPlaying(false);
+      useEditorStore.getState().setCurrentTime(0);
     };
     const onLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setIsBuffering(false);
+      const d = audio.duration;
+      syncStateRef.current.duration = d;
+      useEditorStore.getState().setDuration(d);
+      useEditorStore.getState().setIsBuffering(false);
     };
-    const onWaiting = () => setIsBuffering(true);
-    const onPlaying = () => setIsBuffering(false);
+    const onWaiting = () => useEditorStore.getState().setIsBuffering(true);
+    const onPlaying = () => useEditorStore.getState().setIsBuffering(false);
     const onError = () => {
       const currentSrc = audio.getAttribute('src');
-      if (!currentSrc || currentSrc === "" || currentSrc === window.location.href) {
-        return;
-      }
+      if (!currentSrc || currentSrc === "" || currentSrc === window.location.href) return;
       const error = audio.error;
       let message = 'Audio playback error';
       if (error?.code === 4 || error?.code === 3) {
@@ -54,8 +60,8 @@ export function useAudioEngine() {
         src: currentSrc
       }));
       toast.error(message);
-      setIsPlaying(false);
-      setIsBuffering(false);
+      useEditorStore.getState().setIsPlaying(false);
+      useEditorStore.getState().setIsBuffering(false);
     };
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
@@ -64,6 +70,20 @@ export function useAudioEngine() {
     audio.addEventListener('waiting', onWaiting);
     audio.addEventListener('playing', onPlaying);
     audio.addEventListener('error', onError);
+    // Sync Loop: Decoupled from React Render Cycle
+    const update = () => {
+      const a = audioRef.current;
+      if (a && syncStateRef.current.isPlaying && a.getAttribute('src')) {
+        const audioTime = a.currentTime;
+        // Only update store if there is a meaningful drift to prevent micro-render loops
+        if (Math.abs(audioTime - syncStateRef.current.currentTime) > 0.05) {
+          syncStateRef.current.currentTime = audioTime;
+          useEditorStore.getState().setCurrentTime(audioTime);
+        }
+      }
+      frameRef.current = requestAnimationFrame(update);
+    };
+    frameRef.current = requestAnimationFrame(update);
     return () => {
       audio.pause();
       audio.removeAttribute('src');
@@ -77,62 +97,78 @@ export function useAudioEngine() {
       audio.removeEventListener('error', onError);
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, [setCurrentTime, setDuration, setIsBuffering, setIsPlaying]);
+  }, []);
+  // Track & Source Subscription
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (trackUrl) {
-      setIsBuffering(true);
-      audio.src = trackUrl;
-      audio.load();
-    } else {
-      audio.pause();
-      audio.removeAttribute('src');
-      setIsPlaying(false);
-      setIsBuffering(false);
-    }
-  }, [trackUrl, trackId, setIsBuffering, setIsPlaying]);
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
-      audioRef.current.muted = isMuted;
-    }
-  }, [volume, isMuted]);
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !audio.getAttribute('src')) return;
-    if (isPlaying && audio.paused) {
-      audio.play().catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.error('Play request failed:', safeError(err));
-          setIsPlaying(false);
-        }
-      });
-    } else if (!isPlaying && !audio.paused) {
-      audio.pause();
-    }
-  }, [isPlaying, setIsPlaying, trackUrl]);
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio && audio.getAttribute('src') && Math.abs(audio.currentTime - currentTime) > 1.2) {
-      audio.currentTime = currentTime;
-    }
-  }, [currentTime]);
-  useEffect(() => {
-    const update = () => {
-      const audio = audioRef.current;
-      if (audio && syncStateRef.current.isPlaying && audio.getAttribute('src')) {
-        const audioTime = audio.currentTime;
-        if (Math.abs(audioTime - syncStateRef.current.currentTime) > 0.1) {
-          setCurrentTime(audioTime);
+    return useEditorStore.subscribe(
+      (state) => state.track?.url,
+      (url) => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        if (url) {
+          useEditorStore.getState().setIsBuffering(true);
+          audio.src = url;
+          audio.load();
+          // If was playing, auto-resume
+          if (useEditorStore.getState().isPlaying) {
+            audio.play().catch(() => {});
+          }
+        } else {
+          audio.pause();
+          audio.removeAttribute('src');
+          useEditorStore.getState().setIsPlaying(false);
+          useEditorStore.getState().setIsBuffering(false);
         }
       }
-      frameRef.current = requestAnimationFrame(update);
-    };
-    frameRef.current = requestAnimationFrame(update);
-    return () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    };
-  }, [setCurrentTime]);
+    );
+  }, []);
+  // Playback Control Subscription
+  useEffect(() => {
+    return useEditorStore.subscribe(
+      (state) => state.isPlaying,
+      (playing) => {
+        const audio = audioRef.current;
+        if (!audio || !audio.getAttribute('src')) return;
+        if (playing && audio.paused) {
+          audio.play().catch((err) => {
+            if (err.name !== 'AbortError') {
+              console.error('Play request failed:', safeError(err));
+              useEditorStore.getState().setIsPlaying(false);
+            }
+          });
+        } else if (!playing && !audio.paused) {
+          audio.pause();
+        }
+      }
+    );
+  }, []);
+  // Volume & Mute Subscription
+  useEffect(() => {
+    return useEditorStore.subscribe(
+      (state) => ({ volume: state.volume, isMuted: state.isMuted }),
+      ({ volume, isMuted }) => {
+        if (audioRef.current) {
+          audioRef.current.volume = volume;
+          audioRef.current.muted = isMuted;
+        }
+      }
+    );
+  }, []);
+  // Manual Seek Subscription
+  useEffect(() => {
+    return useEditorStore.subscribe(
+      (state) => state.currentTime,
+      (time) => {
+        const audio = audioRef.current;
+        if (!audio || !audio.getAttribute('src')) return;
+        // Only seek if the drift is large (user interaction/seek)
+        // This prevents the sync loop from fighting with the manual seek
+        if (Math.abs(audio.currentTime - time) > 1.2) {
+          audio.currentTime = time;
+          syncStateRef.current.currentTime = time;
+        }
+      }
+    );
+  }, []);
   return audioRef.current;
 }
