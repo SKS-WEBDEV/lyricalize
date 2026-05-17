@@ -13,6 +13,7 @@ export function useAudioEngine() {
   const setIsBuffering = useEditorStore((s) => s.setIsBuffering);
   useEffect(() => {
     const audio = new Audio();
+    audio.crossOrigin = "anonymous";
     audioRef.current = audio;
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
@@ -43,17 +44,20 @@ export function useAudioEngine() {
       audio.removeEventListener('waiting', onWaiting);
       audio.removeEventListener('playing', onPlaying);
       audio.removeEventListener('error', onError);
-      cancelAnimationFrame(frameRef.current);
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, []);
+  }, [setCurrentTime, setDuration, setIsBuffering, setIsPlaying]);
   // Sync Source
   useEffect(() => {
     if (audioRef.current && track?.url) {
+      const wasPlaying = isPlaying;
       audioRef.current.src = track.url;
       audioRef.current.load();
-      if (isPlaying) audioRef.current.play().catch(() => setIsPlaying(false));
+      if (wasPlaying) {
+        audioRef.current.play().catch(() => setIsPlaying(false));
+      }
     }
-  }, [track?.url]);
+  }, [track?.url, setIsPlaying]);
   // Sync Volume
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
@@ -62,11 +66,14 @@ export function useAudioEngine() {
   useEffect(() => {
     if (!audioRef.current) return;
     if (isPlaying) {
-      audioRef.current.play().catch(() => setIsPlaying(false));
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => setIsPlaying(false));
+      }
     } else {
       audioRef.current.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, setIsPlaying]);
   // Sync Seek (When store currentTime changes externally)
   useEffect(() => {
     if (audioRef.current && Math.abs(audioRef.current.currentTime - currentTime) > 0.5) {
@@ -75,14 +82,18 @@ export function useAudioEngine() {
   }, [currentTime]);
   // High-precision Time Update Loop
   useEffect(() => {
+    let isActive = true;
     const update = () => {
-      if (audioRef.current && isPlaying) {
+      if (audioRef.current && isPlaying && isActive) {
         setCurrentTime(audioRef.current.currentTime);
       }
       frameRef.current = requestAnimationFrame(update);
     };
     frameRef.current = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(frameRef.current);
-  }, [isPlaying]);
+    return () => {
+      isActive = false;
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [isPlaying, setCurrentTime]);
   return audioRef.current;
 }

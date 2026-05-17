@@ -8,22 +8,18 @@ export function Canvas() {
   const style = useEditorStore((s) => s.style);
   const isBuffering = useEditorStore((s) => s.isBuffering);
   const track = useEditorStore((s) => s.track);
-  // High-performance binary search for active lyric line
-  const activeLine = useMemo(() => {
-    if (!lyrics || lyrics.length === 0) return null;
-    let low = 0;
-    let high = lyrics.length - 1;
-    let result = null;
-    while (low <= high) {
-      const mid = Math.floor((low + high) / 2);
-      if (lyrics[mid].time <= currentTime) {
-        result = lyrics[mid];
-        low = mid + 1;
+  const isPlaying = useEditorStore((s) => s.isPlaying);
+  const activeIndex = useMemo(() => {
+    if (!lyrics || lyrics.length === 0) return -1;
+    let index = -1;
+    for (let i = 0; i < lyrics.length; i++) {
+      if (lyrics[i].time <= currentTime) {
+        index = i;
       } else {
-        high = mid - 1;
+        break;
       }
     }
-    return result;
+    return index;
   }, [lyrics, currentTime]);
   useEffect(() => {
     if (style.fontFamily) {
@@ -39,57 +35,82 @@ export function Canvas() {
       link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;500;700;900&display=swap`;
     }
   }, [style.fontFamily]);
-  const canvasStyle: React.CSSProperties = {
-    fontFamily: style.fontFamily,
-    fontSize: `${style.fontSize}px`,
-    fontWeight: style.fontWeight,
-    color: style.color,
-    lineHeight: style.lineHeight,
-    textAlign: style.textAlign,
-    textTransform: style.textTransform,
+  const animationVariants = {
+    fade: {
+      initial: { opacity: 0, filter: 'blur(10px)' },
+      animate: { opacity: 1, filter: 'blur(0px)' },
+      exit: { opacity: 0, filter: 'blur(10px)' },
+    },
+    slide: {
+      initial: { opacity: 0, y: 40 },
+      animate: { opacity: 1, y: 0 },
+      exit: { opacity: 0, y: -40 },
+    },
+    zoom: {
+      initial: { opacity: 0, scale: 0.8 },
+      animate: { opacity: 1, scale: 1 },
+      exit: { opacity: 0, scale: 1.2 },
+    },
+    blur: {
+      initial: { opacity: 0, filter: 'blur(20px)', scale: 0.9 },
+      animate: { opacity: 1, filter: 'blur(0px)', scale: 1 },
+      exit: { opacity: 0, filter: 'blur(20px)', scale: 1.1 },
+    }
   };
+  const currentVariant = animationVariants[style.animationType] || animationVariants.fade;
   return (
-    <div className="flex-1 bg-black flex items-center justify-center overflow-hidden relative group cursor-none">
-      {/* Dynamic Grid Background Overlay */}
-      <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:60px_60px]" />
-      <div className="max-w-5xl px-12 z-10 w-full text-center">
+    <div className="flex-1 bg-black flex items-center justify-center overflow-hidden relative group">
+      {/* Interactive Grid Background */}
+      <motion.div 
+        animate={{ opacity: isPlaying ? 0.08 : 0.03 }}
+        className="absolute inset-0 pointer-events-none bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:60px_60px]" 
+      />
+      <div className="max-w-5xl px-12 z-10 w-full text-center flex flex-col items-center justify-center gap-12">
         <AnimatePresence mode="wait">
-          {activeLine ? (
+          {activeIndex !== -1 ? (
             <motion.div
-              key={activeLine.time}
-              initial={{ opacity: 0, scale: 0.95, filter: 'blur(12px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 1.05, filter: 'blur(12px)' }}
-              transition={{
-                duration: 0.5,
-                ease: [0.16, 1, 0.3, 1]
+              key={lyrics[activeIndex].time}
+              initial={currentVariant.initial}
+              animate={currentVariant.animate}
+              exit={currentVariant.exit}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                fontFamily: style.fontFamily,
+                fontSize: `${style.fontSize}px`,
+                fontWeight: style.fontWeight,
+                color: style.color,
+                lineHeight: style.lineHeight,
+                textAlign: style.textAlign,
+                textTransform: style.textTransform,
+                textShadow: style.glowIntensity > 0 
+                  ? `${style.textShadow}, 0 0 ${style.glowIntensity}px ${style.glowColor}`
+                  : style.textShadow
               }}
-              style={canvasStyle}
-              className="drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] select-none"
+              className="select-none tracking-tight"
             >
-              {activeLine.text}
+              {lyrics[activeIndex].text}
             </motion.div>
           ) : (
             <motion.div
               key="empty"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.2 }}
-              className="text-white/20 text-sm tracking-[0.4em] uppercase font-light"
+              animate={{ opacity: 0.3 }}
+              className="text-white/30 text-sm tracking-[0.5em] uppercase font-light"
             >
-              {!track ? 'Search for a track' : lyrics.length > 0 ? 'Wait for it...' : 'Sync lyrics to preview'}
+              {!track ? 'Search for a track' : lyrics.length > 0 ? 'Wait for audio sync' : 'Sync lyrics to start'}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
       {isBuffering && (
-        <div className="absolute top-8 right-8 flex items-center gap-2 text-white/40 text-xs font-mono uppercase tracking-widest bg-white/5 px-3 py-1.5 rounded-full backdrop-blur-md">
+        <div className="absolute top-8 right-8 flex items-center gap-2 text-white/40 text-xs font-mono uppercase tracking-widest bg-white/5 px-4 py-2 rounded-full backdrop-blur-xl border border-white/10">
           <Loader2 className="w-3 h-3 animate-spin" />
-          Buffering
+          Synchronizing
         </div>
       )}
       {/* Aesthetic Framing */}
-      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black to-transparent pointer-events-none opacity-60" />
-      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none opacity-60" />
+      <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black via-black/40 to-transparent pointer-events-none" />
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
     </div>
   );
 }

@@ -11,6 +11,10 @@ export interface TypographyStyle {
   lineHeight: number;
   textAlign: 'left' | 'center' | 'right';
   textTransform: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+  glowColor: string;
+  glowIntensity: number;
+  textShadow: string;
+  animationType: 'fade' | 'slide' | 'zoom' | 'blur';
 }
 export interface Track {
   id: string;
@@ -81,6 +85,10 @@ export const useEditorStore = create<EditorState>((set) => ({
     lineHeight: 1.2,
     textAlign: 'center',
     textTransform: 'none',
+    glowColor: '#8B5CF6',
+    glowIntensity: 0,
+    textShadow: '0px 0px 0px rgba(0,0,0,0)',
+    animationType: 'fade',
   },
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
