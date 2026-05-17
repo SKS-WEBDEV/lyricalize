@@ -23,6 +23,7 @@ export interface Track {
   albumArt: string;
   duration: number;
   url?: string;
+  downloadUrl?: Array<{ quality: string; url: string }>;
 }
 export interface LrcOption {
   id: number;

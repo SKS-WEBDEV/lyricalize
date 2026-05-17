@@ -139,11 +139,11 @@ export function useAudioEngine() {
 
       console.log("Track object:", track);
 
-      // 🔥 FIX: Proper URL extraction
       const url =
         track?.url ||
-        track?.downloadUrl?.at(-1)?.link ||
-        track?.downloadUrl?.[0]?.link;
+        track?.downloadUrl?.at(-1)?.url ||
+        track?.downloadUrl?.[0]?.url ||
+        '';
 
       console.log("Resolved URL:", url);
 
@@ -152,6 +152,7 @@ export function useAudioEngine() {
         useEditorStore.getState().setDuration(0);
         syncStateRef.current.duration = 0;
 
+        audio.pause();
         audio.src = url;
         audio.load();
 

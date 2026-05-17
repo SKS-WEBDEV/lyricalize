@@ -23,24 +23,27 @@ export async function searchTracks(query: string): Promise<Track[]> {
     // The zylaes-saavn API usually returns data nested in .data
     const songs = result.data?.results || result.data || [];
     if (!Array.isArray(songs)) return [];
-    return songs.map((song: any) => ({
-      id: song.id,
-      title: song.name,
-      artist: Array.isArray(song.artists?.primary) 
-        ? song.artists.primary.map((a: any) => a.name).join(', ') 
-        : (song.artist || 'Unknown Artist'),
-      albumArt: Array.isArray(song.image) 
-        ? song.image[song.image.length - 1]?.url 
-        : song.image || '',
-      duration: Number(song.duration) || 0,
-      url: (() => {
-        if (Array.isArray(song.downloadUrl)) {
-          const preferred = song.downloadUrl.find((d: any) => d?.quality === '320kbps') || song.downloadUrl[song.downloadUrl.length - 1];
-          return preferred?.url || preferred || '';
-        }
-        return song.downloadUrl || '';
-      })(),
-    }));
+    return songs.map((song: any) => {
+      const downloadUrls = Array.isArray(song.downloadUrl) ? song.downloadUrl : [];
+      const preferred = downloadUrls.find((d: any) => typeof d?.quality === 'string' && d.quality.includes('320'))
+        || downloadUrls.find((d: any) => typeof d?.quality === 'string' && d.quality.includes('160'))
+        || downloadUrls[downloadUrls.length - 1];
+
+      return {
+        id: song.id,
+        title: song.name,
+        artist: Array.isArray(song.artists?.primary)
+          ? song.artists.primary.map((a: any) => a.name).join(', ')
+          : (song.artist || 'Unknown Artist'),
+        albumArt: Array.isArray(song.image)
+          ? song.image[song.image.length - 1]?.url
+          : song.image || '',
+        duration: Number(song.duration) || 0,
+        url: preferred?.url || '',
+        downloadUrl: downloadUrls.map((d: any) => ({ quality: d?.quality, url: d?.url })),
+      };
+    });
+
   } catch (error) {
     console.error('Saavn Search Error:', safeError(error));
     return [];
