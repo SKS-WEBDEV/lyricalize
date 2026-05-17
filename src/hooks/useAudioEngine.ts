@@ -21,6 +21,25 @@ export function useAudioEngine() {
   // Initialization: Setup audio element and event listeners
   useEffect(() => {
     const audio = new Audio();
+    const debugEvents = [
+      "loadstart",
+      "loadeddata",
+      "canplay",
+      "play",
+      "pause",
+      "ended",
+      "error"
+    ];
+
+    debugEvents.forEach(event => {
+      audio.addEventListener(event, () => {
+        console.log(`🎧 [${event}]`, {
+          src: audio.src,
+          time: audio.currentTime,
+          readyState: audio.readyState
+        });
+      });
+    });
     audio.crossOrigin = "anonymous";
     audioRef.current = audio;
     const onPlay = () => {
@@ -109,45 +128,72 @@ export function useAudioEngine() {
   }, []);
   // Track & Source Subscription
   useEffect(() => {
-    return (useEditorStore.subscribe as any)(
-      (state) => state.track?.url,
-      (url) => {
-        const audio = audioRef.current;
-        if (!audio) return;
-        if (url) {
-          useEditorStore.getState().setIsBuffering(true);
-          useEditorStore.getState().setDuration(0);
-          syncStateRef.current.duration = 0;
-          audio.src = url;
-          audio.load();
-          // If was playing, auto-resume
-          if (useEditorStore.getState().isPlaying) {
-            audio.play().catch(() => {});
-          }
-        } else {
-          audio.pause();
-          audio.removeAttribute('src');
-          useEditorStore.getState().setIsPlaying(false);
-          useEditorStore.getState().setIsBuffering(false);
-          useEditorStore.getState().setDuration(0);
-          syncStateRef.current.duration = 0;
+  return (useEditorStore.subscribe as any)(
+    (state) => state.track,
+    (track) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      console.group("🎵 Track Change");
+
+      console.log("Track object:", track);
+
+      // 🔥 FIX: Proper URL extraction
+      const url =
+        track?.url ||
+        track?.downloadUrl?.at(-1)?.link ||
+        track?.downloadUrl?.[0]?.link;
+
+      console.log("Resolved URL:", url);
+
+      if (url) {
+        useEditorStore.getState().setIsBuffering(true);
+        useEditorStore.getState().setDuration(0);
+        syncStateRef.current.duration = 0;
+
+        audio.src = url;
+        audio.load();
+
+        console.log("Audio src set to:", audio.src);
+
+        if (useEditorStore.getState().isPlaying) {
+          audio.play().then(() => {
+            console.log("✅ Auto playback success");
+          }).catch((err) => {
+            console.error("❌ Auto playback failed:", err);
+          });
         }
+      } else {
+        console.warn("⚠️ No valid audio URL found");
+
+        audio.pause();
+        audio.removeAttribute('src');
+
+        useEditorStore.getState().setIsPlaying(false);
+        useEditorStore.getState().setIsBuffering(false);
+        useEditorStore.getState().setDuration(0);
+
+        syncStateRef.current.duration = 0;
       }
-    );
-  }, []);
+
+      console.groupEnd();
+    }
+  );
+}, []);
   // Playback Control Subscription
   useEffect(() => {
     return (useEditorStore.subscribe as any)(
       (state) => state.isPlaying,
       (playing) => {
         const audio = audioRef.current;
-        if (!audio || !audio.getAttribute('src')) return;
+        // if (!audio || !audio.getAttribute('src')) return;
+        if (!audio || !audio.src) return;
         if (playing && audio.paused) {
-          audio.play().catch((err) => {
-            if (err.name !== 'AbortError') {
-              console.error('Play request failed:', safeError(err));
-              useEditorStore.getState().setIsPlaying(false);
-            }
+          audio.play().then(() => {
+            console.log("▶️ Playback started");
+          }).catch((err) => {
+            console.error("❌ Play request failed:", err);
+            useEditorStore.getState().setIsPlaying(false);
           });
         } else if (!playing && !audio.paused) {
           audio.pause();
@@ -173,7 +219,8 @@ export function useAudioEngine() {
       (state) => state.currentTime,
       (time) => {
         const audio = audioRef.current;
-        if (!audio || !audio.getAttribute('src')) return;
+        // if (!audio || !audio.getAttribute('src')) return;
+        if (!audio || !audio.src) return;
         // Only seek if the drift is large (user interaction/seek)
         // This prevents the sync loop from fighting with the manual seek
         if (Math.abs(audio.currentTime - time) > 1.2) {
