@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
+import { toast } from 'sonner';
 export function useAudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number>(0);
@@ -21,11 +22,23 @@ export function useAudioEngine() {
       setIsPlaying(false);
       setCurrentTime(0);
     };
-    const onLoadedMetadata = () => setDuration(audio.duration);
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setIsBuffering(false);
+    };
     const onWaiting = () => setIsBuffering(true);
     const onPlaying = () => setIsBuffering(false);
     const onError = (e: any) => {
-      console.error('Audio Error:', e);
+      const error = audio.error;
+      let message = 'Audio playback error';
+      if (error?.code === 4 || error?.code === 3) {
+        message = 'Track unavailable or format not supported';
+      } else if (error?.code === 2) {
+        message = 'Network error during playback';
+      }
+      console.error('Audio Engine Error:', error);
+      toast.error(message);
+      setIsPlaying(false);
       setIsBuffering(false);
     };
     audio.addEventListener('play', onPlay);
@@ -49,35 +62,53 @@ export function useAudioEngine() {
   }, [setCurrentTime, setDuration, setIsBuffering, setIsPlaying]);
   // Sync Source
   useEffect(() => {
-    if (audioRef.current && track?.url) {
+    const audio = audioRef.current;
+    if (audio && track?.url) {
       const wasPlaying = isPlaying;
-      audioRef.current.src = track.url;
-      audioRef.current.load();
+      setIsBuffering(true);
+      // Stop current before switching
+      audio.pause();
+      audio.src = track.url;
+      audio.load();
       if (wasPlaying) {
-        audioRef.current.play().catch(() => setIsPlaying(false));
+        audio.play().catch((err) => {
+          console.warn('Auto-play failed after source change:', err);
+          setIsPlaying(false);
+          setIsBuffering(false);
+        });
       }
+    } else if (audio && !track) {
+      audio.src = '';
+      setIsPlaying(false);
+      setIsBuffering(false);
     }
-  }, [track?.url, setIsPlaying]);
+  }, [track?.url, setIsPlaying, setIsBuffering]); // Note: isPlaying intentionally omitted to avoid loops on manual play/pause
   // Sync Volume
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
-  // Sync Playback State
+  // Sync Playback State (Only triggered by store isPlaying changes)
   useEffect(() => {
-    if (!audioRef.current) return;
+    const audio = audioRef.current;
+    if (!audio || !audio.src) return;
     if (isPlaying) {
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => setIsPlaying(false));
+      if (audio.paused) {
+        audio.play().catch((err) => {
+          console.error('Play request failed:', err);
+          setIsPlaying(false);
+        });
       }
     } else {
-      audioRef.current.pause();
+      if (!audio.paused) {
+        audio.pause();
+      }
     }
   }, [isPlaying, setIsPlaying]);
-  // Sync Seek (When store currentTime changes externally)
+  // Sync Seek (Threshold check to prevent feedback loops)
   useEffect(() => {
-    if (audioRef.current && Math.abs(audioRef.current.currentTime - currentTime) > 0.5) {
-      audioRef.current.currentTime = currentTime;
+    const audio = audioRef.current;
+    if (audio && Math.abs(audio.currentTime - currentTime) > 0.8) {
+      audio.currentTime = currentTime;
     }
   }, [currentTime]);
   // High-precision Time Update Loop
@@ -85,7 +116,10 @@ export function useAudioEngine() {
     let isActive = true;
     const update = () => {
       if (audioRef.current && isPlaying && isActive) {
-        setCurrentTime(audioRef.current.currentTime);
+        // Use a small threshold to avoid excessive state updates if they are identical
+        if (Math.abs(audioRef.current.currentTime - currentTime) > 0.1) {
+          setCurrentTime(audioRef.current.currentTime);
+        }
       }
       frameRef.current = requestAnimationFrame(update);
     };
@@ -94,6 +128,6 @@ export function useAudioEngine() {
       isActive = false;
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, [isPlaying, setCurrentTime]);
+  }, [isPlaying, setCurrentTime, currentTime]);
   return audioRef.current;
 }
