@@ -28,6 +28,8 @@ export interface LrcOption {
   id: number;
   trackName: string;
   artistName: string;
+  albumName?: string;
+  language?: string;
   syncedLyrics?: string;
   plainLyrics?: string;
 }
@@ -42,6 +44,7 @@ interface EditorState {
   track: Track | null;
   lyrics: LyricLine[];
   rawLrc: string;
+  lyricOffset: number; // in milliseconds
   // Search & Library
   isSearching: boolean;
   searchResults: Track[];
@@ -58,6 +61,7 @@ interface EditorState {
   setTrack: (track: Track | null) => void;
   setLyrics: (lyrics: LyricLine[]) => void;
   setRawLrc: (lrc: string) => void;
+  setLyricOffset: (offset: number) => void;
   setIsSearching: (isSearching: boolean) => void;
   setSearchResults: (results: Track[]) => void;
   setLrcOptions: (options: LrcOption[]) => void;
@@ -73,6 +77,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   track: null,
   lyrics: [],
   rawLrc: '',
+  lyricOffset: 0,
   isSearching: false,
   searchResults: [],
   lrcOptions: [],
@@ -98,6 +103,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   setTrack: (track) => set({ track }),
   setLyrics: (lyrics) => set({ lyrics }),
   setRawLrc: (lrc) => set({ rawLrc: lrc }),
+  setLyricOffset: (lyricOffset) => set({ lyricOffset }),
   setIsSearching: (isSearching) => set({ isSearching }),
   setSearchResults: (results) => set({ searchResults: results }),
   setLrcOptions: (options) => set({ lrcOptions: options }),

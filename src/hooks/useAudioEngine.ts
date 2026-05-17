@@ -5,7 +5,7 @@ import { safeError } from '@/lib/utils';
 export function useAudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number>(0);
-  // Zustand Zero-Tolerance Rule: Primitive selectors only
+  // Zustand Zero-Tolerance Rule: Primitive selectors only, called at top level
   const isPlaying = useEditorStore((s) => s.isPlaying);
   const volume = useEditorStore((s) => s.volume);
   const trackUrl = useEditorStore((s) => s.track?.url);
@@ -15,6 +15,7 @@ export function useAudioEngine() {
   const setCurrentTime = useEditorStore((s) => s.setCurrentTime);
   const setDuration = useEditorStore((s) => s.setDuration);
   const setIsBuffering = useEditorStore((s) => s.setIsBuffering);
+  // Initialize audio element once
   useEffect(() => {
     const audio = new Audio();
     audio.crossOrigin = "anonymous";
@@ -33,16 +34,16 @@ export function useAudioEngine() {
     const onPlaying = () => setIsBuffering(false);
     const onError = () => {
       const error = audio.error;
+      if (!audio.src) return; // Ignore errors if src is not set yet
       let message = 'Audio playback error';
       if (error?.code === 4 || error?.code === 3) {
         message = 'Track unavailable or format not supported';
       } else if (error?.code === 2) {
         message = 'Network error during playback';
       }
-      // Use safeError to avoid empty object logging for MediaError
-      console.error('Audio Engine Error:', safeError({ 
-        code: error?.code, 
-        message: error?.message || 'Unknown MediaError' 
+      console.error('Audio Engine Error:', safeError({
+        code: error?.code,
+        message: error?.message || 'Unknown MediaError'
       }));
       toast.error(message);
       setIsPlaying(false);
@@ -67,20 +68,19 @@ export function useAudioEngine() {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
   }, [setCurrentTime, setDuration, setIsBuffering, setIsPlaying]);
-  // Sync Source - Refactored to avoid cycles and handle restarts properly
+  // Sync Source
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (trackUrl) {
-      // Capture if it was playing before the change
-      const shouldResume = isPlaying || !audio.paused;
+      const wasPlaying = isPlaying;
       setIsBuffering(true);
       audio.pause();
       audio.src = trackUrl;
       audio.load();
-      if (shouldResume) {
+      if (wasPlaying) {
         audio.play().catch((err) => {
-          console.warn('Auto-play failed after source change:', safeError(err));
+          console.warn('Playback failed after source change:', safeError(err));
           setIsPlaying(false);
           setIsBuffering(false);
         });
@@ -90,7 +90,6 @@ export function useAudioEngine() {
       setIsPlaying(false);
       setIsBuffering(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trackUrl, trackId, setIsBuffering, setIsPlaying]);
   // Sync Volume
   useEffect(() => {
@@ -98,7 +97,7 @@ export function useAudioEngine() {
       audioRef.current.volume = volume;
     }
   }, [volume]);
-  // Sync Playback State (Only triggered by store isPlaying changes)
+  // Sync Playback State with safety check for empty src
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audio.src) return;
@@ -111,20 +110,22 @@ export function useAudioEngine() {
       audio.pause();
     }
   }, [isPlaying, setIsPlaying]);
-  // Sync Seek (Threshold check to prevent feedback loops)
+  // Sync Seek (Threshold check)
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio && Math.abs(audio.currentTime - currentTime) > 0.8) {
+    if (audio && audio.src && Math.abs(audio.currentTime - currentTime) > 1.2) {
       audio.currentTime = currentTime;
     }
   }, [currentTime]);
-  // High-precision Time Update Loop
+  // Optimized high-precision sync loop
   useEffect(() => {
     let isActive = true;
     const update = () => {
-      if (audioRef.current && isPlaying && isActive) {
-        if (Math.abs(audioRef.current.currentTime - currentTime) > 0.1) {
-          setCurrentTime(audioRef.current.currentTime);
+      if (audioRef.current && isPlaying && isActive && audioRef.current.src) {
+        const audioTime = audioRef.current.currentTime;
+        // Throttled update to avoid excessive re-renders if the drift is tiny
+        if (Math.abs(audioTime - currentTime) > 0.15) {
+          setCurrentTime(audioTime);
         }
       }
       frameRef.current = requestAnimationFrame(update);
