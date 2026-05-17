@@ -42,6 +42,13 @@ export function useAudioEngine() {
       useEditorStore.getState().setDuration(d);
       useEditorStore.getState().setIsBuffering(false);
     };
+    const onDurationChange = () => {
+      const d = audio.duration;
+      if (isFinite(d) && d > 0) {
+        syncStateRef.current.duration = d;
+        useEditorStore.getState().setDuration(d);
+      }
+    };
     const onWaiting = () => useEditorStore.getState().setIsBuffering(true);
     const onPlaying = () => useEditorStore.getState().setIsBuffering(false);
     const onError = () => {
@@ -67,6 +74,7 @@ export function useAudioEngine() {
     audio.addEventListener('pause', onPause);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('durationchange', onDurationChange);
     audio.addEventListener('waiting', onWaiting);
     audio.addEventListener('playing', onPlaying);
     audio.addEventListener('error', onError);
@@ -92,6 +100,7 @@ export function useAudioEngine() {
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('durationchange', onDurationChange);
       audio.removeEventListener('waiting', onWaiting);
       audio.removeEventListener('playing', onPlaying);
       audio.removeEventListener('error', onError);
@@ -100,13 +109,15 @@ export function useAudioEngine() {
   }, []);
   // Track & Source Subscription
   useEffect(() => {
-    return useEditorStore.subscribe(
+    return (useEditorStore.subscribe as any)(
       (state) => state.track?.url,
       (url) => {
         const audio = audioRef.current;
         if (!audio) return;
         if (url) {
           useEditorStore.getState().setIsBuffering(true);
+          useEditorStore.getState().setDuration(0);
+          syncStateRef.current.duration = 0;
           audio.src = url;
           audio.load();
           // If was playing, auto-resume
@@ -118,13 +129,15 @@ export function useAudioEngine() {
           audio.removeAttribute('src');
           useEditorStore.getState().setIsPlaying(false);
           useEditorStore.getState().setIsBuffering(false);
+          useEditorStore.getState().setDuration(0);
+          syncStateRef.current.duration = 0;
         }
       }
     );
   }, []);
   // Playback Control Subscription
   useEffect(() => {
-    return useEditorStore.subscribe(
+    return (useEditorStore.subscribe as any)(
       (state) => state.isPlaying,
       (playing) => {
         const audio = audioRef.current;
@@ -144,7 +157,7 @@ export function useAudioEngine() {
   }, []);
   // Volume & Mute Subscription
   useEffect(() => {
-    return useEditorStore.subscribe(
+    return (useEditorStore.subscribe as any)(
       (state) => ({ volume: state.volume, isMuted: state.isMuted }),
       ({ volume, isMuted }) => {
         if (audioRef.current) {
@@ -156,7 +169,7 @@ export function useAudioEngine() {
   }, []);
   // Manual Seek Subscription
   useEffect(() => {
-    return useEditorStore.subscribe(
+    return (useEditorStore.subscribe as any)(
       (state) => state.currentTime,
       (time) => {
         const audio = audioRef.current;

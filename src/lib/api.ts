@@ -33,9 +33,13 @@ export async function searchTracks(query: string): Promise<Track[]> {
         ? song.image[song.image.length - 1]?.url 
         : song.image || '',
       duration: Number(song.duration) || 0,
-      url: Array.isArray(song.downloadUrl) 
-        ? song.downloadUrl[song.downloadUrl.length - 1]?.url 
-        : song.downloadUrl || '',
+      url: (() => {
+        if (Array.isArray(song.downloadUrl)) {
+          const preferred = song.downloadUrl.find((d: any) => d?.quality === '320kbps') || song.downloadUrl[song.downloadUrl.length - 1];
+          return preferred?.url || preferred || '';
+        }
+        return song.downloadUrl || '';
+      })(),
     }));
   } catch (error) {
     console.error('Saavn Search Error:', safeError(error));

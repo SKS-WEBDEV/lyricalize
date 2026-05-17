@@ -11,8 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
 export function HomePage() {
   // Always call hooks at top level for stability
-  useAudioEngine();
   const isMobile = useIsMobile();
+  useAudioEngine();
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       {/* Header / Mobile Controls */}
