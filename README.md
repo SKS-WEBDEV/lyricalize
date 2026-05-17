@@ -1,6 +1,6 @@
 # Cloudflare Workers React Template
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SKS-WEBDEV/lyricalize)
 
 A modern, production-ready full-stack application template built with Cloudflare Workers, React, and TypeScript. This template provides a robust foundation for building scalable web applications with serverless backend capabilities.
 
@@ -108,7 +108,7 @@ The template includes built-in routes for health checks and client error reporti
 
 ## Deployment
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SKS-WEBDEV/lyricalize)
 
 ### Manual Deployment
 
