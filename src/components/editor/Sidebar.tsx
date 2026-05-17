@@ -3,10 +3,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MusicPanel } from './MusicPanel';
 import { LyricsPanel } from './LyricsPanel';
 import { DesignPanel } from './DesignPanel';
-import { Music, FileText, Palette, Download, ChevronDown, Zap } from 'lucide-react';
+import { Music, FileText, Palette, Download, ChevronDown, Zap, Save, FileJson } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useEditorStore } from '@/store/useEditorStore';
+import { toast } from 'sonner';
 export function Sidebar() {
+  const track = useEditorStore((s) => s.track);
+  const lyrics = useEditorStore((s) => s.lyrics);
+  const style = useEditorStore((s) => s.style);
+  const lyricOffset = useEditorStore((s) => s.lyricOffset);
+  const handleSaveProject = () => {
+    try {
+      const projectData = {
+        version: '1.5',
+        timestamp: new Date().toISOString(),
+        track,
+        lyrics,
+        style,
+        lyricOffset
+      };
+      const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `lyricalise-${track?.title || 'project'}-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('Project saved successfully!');
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      toast.error('Failed to export project file.');
+    }
+  };
+  const handleExportVideo = () => {
+    toast.info('Rendering Engine Active', {
+      description: 'The canvas is currently optimized for HD preview. Recording features are coming in the next update!',
+    });
+  };
   return (
     <div className="w-96 border-r bg-card/30 backdrop-blur-xl flex flex-col h-full overflow-hidden shadow-2xl z-40">
       <div className="p-6 pb-4 flex items-center justify-between border-b border-white/5 bg-secondary/10">
@@ -24,10 +60,19 @@ export function Sidebar() {
               <ChevronDown className="w-3 h-3 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 rounded-xl border-white/5">
-            <DropdownMenuItem className="gap-2 text-xs font-medium">Export as Video (HD)</DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 text-xs font-medium">Save Project File</DropdownMenuItem>
-            <DropdownMenuItem className="gap-2 text-xs font-medium">Copy Metadata</DropdownMenuItem>
+          <DropdownMenuContent align="end" className="w-56 rounded-xl border-white/5 p-2">
+            <DropdownMenuItem onClick={handleExportVideo} className="gap-3 text-xs font-bold py-2.5 rounded-lg cursor-pointer">
+              <div className="w-7 h-7 rounded-md bg-purple-500/10 flex items-center justify-center">
+                <Zap className="w-3.5 h-3.5 text-purple-500" />
+              </div>
+              Export as Video (HD)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleSaveProject} className="gap-3 text-xs font-bold py-2.5 rounded-lg cursor-pointer">
+              <div className="w-7 h-7 rounded-md bg-cyan-500/10 flex items-center justify-center">
+                <FileJson className="w-3.5 h-3.5 text-cyan-500" />
+              </div>
+              Save Project File
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
