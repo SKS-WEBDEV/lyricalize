@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MusicPanel } from './MusicPanel';
 import { LyricsPanel } from './LyricsPanel';
 import { DesignPanel } from './DesignPanel';
-import { Music, FileText, Palette, Download, ChevronDown } from 'lucide-react';
+import { Music, FileText, Palette, Download, ChevronDown, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 export function Sidebar() {
@@ -66,4 +66,3 @@ export function Sidebar() {
     </div>
   );
 }
-import { Zap } from 'lucide-react';

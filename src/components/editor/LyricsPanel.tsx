@@ -4,26 +4,34 @@ import { parseLRC } from '@/lib/lrcParser';
 import { getLyricsOptions } from '@/lib/api';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Upload, FileText, CheckCircle2, Search, Zap } from 'lucide-react';
+import { Upload, CheckCircle2, Search, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
 export function LyricsPanel() {
   const rawLrc = useEditorStore((s) => s.rawLrc);
-  const track = useEditorStore((s) => s.track);
-  const lyrics = useEditorStore((s) => s.lyrics);
   const currentTime = useEditorStore((s) => s.currentTime);
+  const lyrics = useEditorStore((s) => s.lyrics);
   const lrcOptions = useEditorStore((s) => s.lrcOptions);
   const selectedLrcId = useEditorStore((s) => s.selectedLrcId);
+  // Track primitives for effect dependencies
+  const trackId = useEditorStore((s) => s.track?.id);
+  const trackTitle = useEditorStore((s) => s.track?.title);
+  const trackArtist = useEditorStore((s) => s.track?.artist);
+  const trackDuration = useEditorStore((s) => s.track?.duration);
+  const trackAlbumArt = useEditorStore((s) => s.track?.albumArt);
+  const trackUrl = useEditorStore((s) => s.track?.url);
   const setRawLrc = useEditorStore((s) => s.setRawLrc);
   const setLyrics = useEditorStore((s) => s.setLyrics);
   const setLrcOptions = useEditorStore((s) => s.setLrcOptions);
   const setSelectedLrcId = useEditorStore((s) => s.setSelectedLrcId);
   useEffect(() => {
-    if (track) {
+    if (trackId && trackTitle && trackArtist) {
       const fetchLrcs = async () => {
         try {
-          const options = await getLyricsOptions(track);
+          // Reconstruct track object for API compatibility
+          const trackObj = { id: trackId, title: trackTitle, artist: trackArtist, albumArt: trackAlbumArt ?? '', duration: trackDuration ?? 0, url: trackUrl };
+          const options = await getLyricsOptions(trackObj);
           setLrcOptions(options);
         } catch (error) {
           console.error("Failed to fetch lyrics options", error);
@@ -31,7 +39,7 @@ export function LyricsPanel() {
       };
       fetchLrcs();
     }
-  }, [track, setLrcOptions]);
+  }, [trackId, trackTitle, trackArtist, trackAlbumArt, trackDuration, trackUrl, setLrcOptions]);
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (!file) return;
@@ -65,7 +73,7 @@ export function LyricsPanel() {
   }, [lyrics, currentTime]);
   return (
     <div className="space-y-6 pb-8">
-      {track && (
+      {trackId && (
         <div className="space-y-3">
           <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <Search className="w-3 h-3" /> Auto-Synced Results

@@ -13,9 +13,10 @@ export function MusicPanel() {
   const [query, setQuery] = React.useState('');
   const [debouncedQuery] = useDebounceValue(query, 500);
   const [error, setError] = React.useState<string | null>(null);
+  // Zustand Zero-Tolerance selectors
   const isSearching = useEditorStore((s) => s.isSearching);
   const searchResults = useEditorStore((s) => s.searchResults);
-  const currentTrack = useEditorStore((s) => s.track);
+  const currentTrackId = useEditorStore((s) => s.track?.id);
   const setIsSearching = useEditorStore((s) => s.setIsSearching);
   const setSearchResults = useEditorStore((s) => s.setSearchResults);
   const setTrack = useEditorStore((s) => s.setTrack);
@@ -127,7 +128,7 @@ export function MusicPanel() {
                 key={track.id}
                 className={cn(
                   "p-3 flex items-center gap-3 cursor-pointer transition-all hover:bg-accent border-transparent group/card rounded-xl",
-                  currentTrack?.id === track.id ? 'bg-primary/10 border-primary/30' : 'bg-secondary/30'
+                  currentTrackId === track.id ? 'bg-primary/10 border-primary/30' : 'bg-secondary/30'
                 )}
                 onClick={() => handleSelectTrack(track)}
               >

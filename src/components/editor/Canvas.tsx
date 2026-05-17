@@ -5,10 +5,21 @@ import { Loader2 } from 'lucide-react';
 export function Canvas() {
   const lyrics = useEditorStore((s) => s.lyrics);
   const currentTime = useEditorStore((s) => s.currentTime);
-  const style = useEditorStore((s) => s.style);
   const isBuffering = useEditorStore((s) => s.isBuffering);
-  const track = useEditorStore((s) => s.track);
   const isPlaying = useEditorStore((s) => s.isPlaying);
+  const hasTrack = useEditorStore((s) => !!s.track);
+  // Zustand Zero-Tolerance: style properties as primitives
+  const fontFamily = useEditorStore((s) => s.style.fontFamily);
+  const fontSize = useEditorStore((s) => s.style.fontSize);
+  const color = useEditorStore((s) => s.style.color);
+  const fontWeight = useEditorStore((s) => s.style.fontWeight);
+  const lineHeight = useEditorStore((s) => s.style.lineHeight);
+  const textAlign = useEditorStore((s) => s.style.textAlign);
+  const textTransform = useEditorStore((s) => s.style.textTransform);
+  const glowColor = useEditorStore((s) => s.style.glowColor);
+  const glowIntensity = useEditorStore((s) => s.style.glowIntensity);
+  const textShadow = useEditorStore((s) => s.style.textShadow);
+  const animationType = useEditorStore((s) => s.style.animationType);
   const activeIndex = useMemo(() => {
     if (!lyrics || lyrics.length === 0) return -1;
     let index = -1;
@@ -22,8 +33,8 @@ export function Canvas() {
     return index;
   }, [lyrics, currentTime]);
   useEffect(() => {
-    if (style.fontFamily) {
-      const fontName = style.fontFamily.replace(/\s+/g, '+');
+    if (fontFamily) {
+      const fontName = fontFamily.replace(/\s+/g, '+');
       const linkId = 'lyricalise-font-loader';
       let link = document.getElementById(linkId) as HTMLLinkElement;
       if (!link) {
@@ -34,7 +45,7 @@ export function Canvas() {
       }
       link.href = `https://fonts.googleapis.com/css2?family=${fontName}:wght@300;400;500;700;900&display=swap`;
     }
-  }, [style.fontFamily]);
+  }, [fontFamily]);
   const animationVariants = {
     fade: {
       initial: { opacity: 0, filter: 'blur(10px)' },
@@ -57,13 +68,12 @@ export function Canvas() {
       exit: { opacity: 0, filter: 'blur(20px)', scale: 1.1 },
     }
   };
-  const currentVariant = animationVariants[style.animationType] || animationVariants.fade;
+  const currentVariant = animationVariants[animationType] || animationVariants.fade;
   return (
     <div className="flex-1 bg-black flex items-center justify-center overflow-hidden relative group">
-      {/* Interactive Grid Background */}
-      <motion.div 
+      <motion.div
         animate={{ opacity: isPlaying ? 0.08 : 0.03 }}
-        className="absolute inset-0 pointer-events-none bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:60px_60px]" 
+        className="absolute inset-0 pointer-events-none bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:60px_60px]"
       />
       <div className="max-w-5xl px-12 z-10 w-full text-center flex flex-col items-center justify-center gap-12">
         <AnimatePresence mode="wait">
@@ -75,16 +85,16 @@ export function Canvas() {
               exit={currentVariant.exit}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
               style={{
-                fontFamily: style.fontFamily,
-                fontSize: `${style.fontSize}px`,
-                fontWeight: style.fontWeight,
-                color: style.color,
-                lineHeight: style.lineHeight,
-                textAlign: style.textAlign,
-                textTransform: style.textTransform,
-                textShadow: style.glowIntensity > 0 
-                  ? `${style.textShadow}, 0 0 ${style.glowIntensity}px ${style.glowColor}`
-                  : style.textShadow
+                fontFamily: fontFamily,
+                fontSize: `${fontSize}px`,
+                fontWeight: fontWeight,
+                color: color,
+                lineHeight: lineHeight,
+                textAlign: textAlign,
+                textTransform: textTransform,
+                textShadow: glowIntensity > 0
+                  ? `${textShadow}, 0 0 ${glowIntensity}px ${glowColor}`
+                  : textShadow
               }}
               className="select-none tracking-tight"
             >
@@ -97,7 +107,7 @@ export function Canvas() {
               animate={{ opacity: 0.3 }}
               className="text-white/30 text-sm tracking-[0.5em] uppercase font-light"
             >
-              {!track ? 'Search for a track' : lyrics.length > 0 ? 'Wait for audio sync' : 'Sync lyrics to start'}
+              {!hasTrack ? 'Search for a track' : lyrics.length > 0 ? 'Wait for audio sync' : 'Sync lyrics to start'}
             </motion.div>
           )}
         </AnimatePresence>
@@ -108,7 +118,6 @@ export function Canvas() {
           Synchronizing
         </div>
       )}
-      {/* Aesthetic Framing */}
       <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-black via-black/40 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
     </div>

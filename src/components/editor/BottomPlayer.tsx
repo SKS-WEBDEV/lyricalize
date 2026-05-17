@@ -16,13 +16,16 @@ export function BottomPlayer() {
   const currentTime = useEditorStore((s) => s.currentTime);
   const duration = useEditorStore((s) => s.duration);
   const volume = useEditorStore((s) => s.volume);
-  const track = useEditorStore((s) => s.track);
+  const trackId = useEditorStore((s) => s.track?.id);
+  const trackTitle = useEditorStore((s) => s.track?.title);
+  const trackArtist = useEditorStore((s) => s.track?.artist);
+  const trackAlbumArt = useEditorStore((s) => s.track?.albumArt);
   const setIsPlaying = useEditorStore((s) => s.setIsPlaying);
   const setCurrentTime = useEditorStore((s) => s.setCurrentTime);
   const setVolume = useEditorStore((s) => s.setVolume);
   const togglePlay = useCallback(() => {
-    if (track) setIsPlaying(!isPlaying);
-  }, [track, isPlaying, setIsPlaying]);
+    if (trackId) setIsPlaying(!isPlaying);
+  }, [trackId, isPlaying, setIsPlaying]);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -36,12 +39,13 @@ export function BottomPlayer() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePlay, currentTime, duration, setCurrentTime]);
+  const hasTrack = !!trackId;
   return (
     <div className="h-28 border-t bg-card/40 backdrop-blur-3xl px-8 flex items-center gap-8 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] relative z-30">
       <div className="flex items-center gap-5 w-80">
         <div className="w-16 h-16 rounded-2xl bg-muted flex-shrink-0 overflow-hidden shadow-2xl border border-white/5 relative group perspective-1000">
-          {track?.albumArt ? (
-            <img src={track.albumArt} alt={track.title} className="w-full h-full object-cover transition-all duration-500 group-hover:scale-125" />
+          {trackAlbumArt ? (
+            <img src={trackAlbumArt} alt={trackTitle} className="w-full h-full object-cover transition-all duration-500 group-hover:scale-125" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-transparent">
               <Music className="w-7 h-7 text-primary/30" />
@@ -54,9 +58,9 @@ export function BottomPlayer() {
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-black tracking-tight truncate">{track?.title ?? 'Ready for Music?'}</p>
+          <p className="text-sm font-black tracking-tight truncate">{trackTitle ?? 'Ready for Music?'}</p>
           <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest font-bold mt-1 opacity-70">
-            {track?.artist ?? 'Select a masterpiece'}
+            {trackArtist ?? 'Select a masterpiece'}
           </p>
         </div>
       </div>
@@ -68,10 +72,10 @@ export function BottomPlayer() {
           <Button
             variant="default"
             size="icon"
-            disabled={!track}
+            disabled={!hasTrack}
             className={cn(
               "w-14 h-14 rounded-full shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all duration-300 hover:scale-110 active:scale-90",
-              track ? "bg-primary hover:bg-primary/90" : "opacity-30"
+              hasTrack ? "bg-primary hover:bg-primary/90" : "opacity-30"
             )}
             onClick={togglePlay}
           >
@@ -91,7 +95,7 @@ export function BottomPlayer() {
             value={[currentTime]}
             max={duration || 100}
             step={0.1}
-            disabled={!track}
+            disabled={!hasTrack}
             onValueChange={([v]) => setCurrentTime(v)}
             className="flex-1"
           />
