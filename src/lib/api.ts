@@ -1,7 +1,6 @@
 import { Track, LyricLine } from '@/store/useEditorStore';
 import { parseLRC } from './lrcParser';
-import { safeError } from './utils';
-const SAAVN_API_BASE = 'https://zylaes-saavn.vercel.app/api';
+const SAAVN_API_BASE = 'https://saavn.dev/api';
 const LRCLIB_API_BASE = 'https://lrclib.net/api';
 export interface LrcOption {
   id: number;
@@ -16,33 +15,18 @@ export interface LrcOption {
 export async function searchTracks(query: string): Promise<Track[]> {
   try {
     const response = await fetch(`${SAAVN_API_BASE}/search/songs?query=${encodeURIComponent(query)}&limit=15`);
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status} ${response.statusText}`);
-    }
     const result = await response.json();
-    // The zylaes-saavn API usually returns data nested in .data
-    const songs = result.data?.results || result.data || [];
-    if (!Array.isArray(songs)) return [];
-    return songs.map((song: any) => ({
+    if (!result.success || !result.data.results) return [];
+    return result.data.results.map((song: any) => ({
       id: song.id,
       title: song.name,
-      artist: Array.isArray(song.artists?.primary) 
-        ? song.artists.primary.map((a: any) => a.name).join(', ') 
-        : (song.artist || 'Unknown Artist'),
-      albumArt: Array.isArray(song.image) 
-        ? song.image[song.image.length - 1]?.url 
-        : song.image || '',
-      duration: Number(song.duration) || 0,
-      url: (() => {
-        if (Array.isArray(song.downloadUrl)) {
-          const preferred = song.downloadUrl.find((d: any) => d?.quality === '320kbps') || song.downloadUrl[song.downloadUrl.length - 1];
-          return preferred?.url || preferred || '';
-        }
-        return song.downloadUrl || '';
-      })(),
+      artist: song.artists.primary.map((a: any) => a.name).join(', '),
+      albumArt: song.image[song.image.length - 1].url, // Highest resolution
+      duration: song.duration,
+      url: song.downloadUrl[song.downloadUrl.length - 1].url, // Highest bitrate
     }));
   } catch (error) {
-    console.error('Saavn Search Error:', safeError(error));
+    console.error('Saavn Search Error:', error);
     return [];
   }
 }
@@ -53,7 +37,7 @@ export async function getLyricsOptions(track: Track): Promise<LrcOption[]> {
     if (!response.ok) return [];
     return await response.json();
   } catch (error) {
-    console.error('LRCLIB Search Error:', safeError(error));
+    console.error('LRCLIB Search Error:', error);
     return [];
   }
 }
@@ -69,7 +53,7 @@ export async function getBestMatchLyrics(track: Track): Promise<{ raw: string; p
       parsed: parseLRC(raw),
     };
   } catch (error) {
-    console.error('LRCLIB Best Match Error:', safeError(error));
+    console.error('LRCLIB Best Match Error:', error);
     return null;
   }
 }

@@ -20,45 +20,59 @@ export interface Track {
   duration: number;
   url?: string;
 }
+export interface LrcOption {
+  id: number;
+  trackName: string;
+  artistName: string;
+  syncedLyrics?: string;
+  plainLyrics?: string;
+}
 interface EditorState {
   // Audio State
   isPlaying: boolean;
   currentTime: number;
   duration: number;
+  volume: number;
+  isBuffering: boolean;
   // Track & Lyrics
   track: Track | null;
   lyrics: LyricLine[];
   rawLrc: string;
+  // Search & Library
+  isSearching: boolean;
+  searchResults: Track[];
+  lrcOptions: LrcOption[];
+  selectedLrcId: number | null;
   // Design State
   style: TypographyStyle;
   // Actions
   setIsPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
+  setVolume: (volume: number) => void;
+  setIsBuffering: (isBuffering: boolean) => void;
   setTrack: (track: Track | null) => void;
   setLyrics: (lyrics: LyricLine[]) => void;
   setRawLrc: (lrc: string) => void;
+  setIsSearching: (isSearching: boolean) => void;
+  setSearchResults: (results: Track[]) => void;
+  setLrcOptions: (options: LrcOption[]) => void;
+  setSelectedLrcId: (id: number | null) => void;
   setStyle: (style: Partial<TypographyStyle>) => void;
 }
 export const useEditorStore = create<EditorState>((set) => ({
   isPlaying: false,
   currentTime: 0,
-  duration: 180, // Default 3 mins for mock
-  track: {
-    id: '1',
-    title: 'Midnight City',
-    artist: 'M83',
-    albumArt: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=300&h=300&fit=crop',
-    duration: 243,
-  },
-  lyrics: [
-    { time: 0, text: "Waiting in a car" },
-    { time: 5, text: "Waiting for a ride in the dark" },
-    { time: 10, text: "At night the city grows" },
-    { time: 15, text: "Look at the horizon burn" },
-    { time: 20, text: "He's coming..." },
-  ],
-  rawLrc: "[00:00.00]Waiting in a car\n[00:05.00]Waiting for a ride in the dark\n[00:10.00]At night the city grows\n[00:15.00]Look at the horizon burn\n[00:20.00]He's coming...",
+  duration: 0,
+  volume: 0.8,
+  isBuffering: false,
+  track: null,
+  lyrics: [],
+  rawLrc: '',
+  isSearching: false,
+  searchResults: [],
+  lrcOptions: [],
+  selectedLrcId: null,
   style: {
     fontFamily: 'Inter',
     fontSize: 48,
@@ -71,8 +85,14 @@ export const useEditorStore = create<EditorState>((set) => ({
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
+  setVolume: (volume) => set({ volume }),
+  setIsBuffering: (isBuffering) => set({ isBuffering }),
   setTrack: (track) => set({ track }),
   setLyrics: (lyrics) => set({ lyrics }),
   setRawLrc: (lrc) => set({ rawLrc: lrc }),
+  setIsSearching: (isSearching) => set({ isSearching }),
+  setSearchResults: (results) => set({ searchResults: results }),
+  setLrcOptions: (options) => set({ lrcOptions: options }),
+  setSelectedLrcId: (id) => set({ selectedLrcId: id }),
   setStyle: (newStyle) => set((state) => ({ style: { ...state.style, ...newStyle } })),
 }));
