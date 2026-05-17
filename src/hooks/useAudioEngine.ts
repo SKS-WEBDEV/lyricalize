@@ -5,7 +5,8 @@ import { safeError } from '@/lib/utils';
 export function useAudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number>(0);
-  // Zustand Zero-Tolerance Rule: Primitive selectors only, called at top level
+  // Ref to track latest values for the RAF loop without re-triggering effects
+  const syncStateRef = useRef({ currentTime: 0, isPlaying: false });
   const isPlaying = useEditorStore((s) => s.isPlaying);
   const volume = useEditorStore((s) => s.volume);
   const trackUrl = useEditorStore((s) => s.track?.url);
@@ -15,7 +16,10 @@ export function useAudioEngine() {
   const setCurrentTime = useEditorStore((s) => s.setCurrentTime);
   const setDuration = useEditorStore((s) => s.setDuration);
   const setIsBuffering = useEditorStore((s) => s.setIsBuffering);
-  // Initialize audio element once
+  // Update refs on every change to keep sync loop fresh without dependency thrashing
+  useEffect(() => {
+    syncStateRef.current = { currentTime, isPlaying };
+  }, [currentTime, isPlaying]);
   useEffect(() => {
     const audio = new Audio();
     audio.crossOrigin = "anonymous";
@@ -33,17 +37,22 @@ export function useAudioEngine() {
     const onWaiting = () => setIsBuffering(true);
     const onPlaying = () => setIsBuffering(false);
     const onError = () => {
+      // Enhanced check for empty src to suppress false errors on cleanup or reset
+      const currentSrc = audio.getAttribute('src');
+      if (!currentSrc || currentSrc === "" || currentSrc === window.location.href) {
+        return; 
+      }
       const error = audio.error;
-      if (!audio.src) return; // Ignore errors if src is not set yet
       let message = 'Audio playback error';
       if (error?.code === 4 || error?.code === 3) {
         message = 'Track unavailable or format not supported';
       } else if (error?.code === 2) {
         message = 'Network error during playback';
       }
-      console.error('Audio Engine Error:', safeError({
+      console.warn('Audio Engine Notice:', safeError({
         code: error?.code,
-        message: error?.message || 'Unknown MediaError'
+        message: error?.message || 'Media Error',
+        src: currentSrc
       }));
       toast.error(message);
       setIsPlaying(false);
@@ -58,6 +67,8 @@ export function useAudioEngine() {
     audio.addEventListener('error', onError);
     return () => {
       audio.pause();
+      audio.removeAttribute('src'); // Use removeAttribute instead of empty string
+      audio.load();
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('ended', onEnded);
@@ -73,20 +84,14 @@ export function useAudioEngine() {
     const audio = audioRef.current;
     if (!audio) return;
     if (trackUrl) {
-      const wasPlaying = isPlaying;
       setIsBuffering(true);
       audio.pause();
       audio.src = trackUrl;
       audio.load();
-      if (wasPlaying) {
-        audio.play().catch((err) => {
-          console.warn('Playback failed after source change:', safeError(err));
-          setIsPlaying(false);
-          setIsBuffering(false);
-        });
-      }
+      // Logic for auto-resume if it was already playing is handled by 'Sync Playback State' effect
     } else {
-      audio.src = '';
+      audio.pause();
+      audio.removeAttribute('src');
       setIsPlaying(false);
       setIsBuffering(false);
     }
@@ -97,34 +102,36 @@ export function useAudioEngine() {
       audioRef.current.volume = volume;
     }
   }, [volume]);
-  // Sync Playback State with safety check for empty src
+  // Sync Playback State (Handles all Play/Pause logic centrally)
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !audio.src) return;
+    if (!audio || !audio.getAttribute('src')) return;
     if (isPlaying && audio.paused) {
       audio.play().catch((err) => {
-        console.error('Play request failed:', safeError(err));
-        setIsPlaying(false);
+        if (err.name !== 'AbortError') {
+          console.error('Play request failed:', safeError(err));
+          setIsPlaying(false);
+        }
       });
     } else if (!isPlaying && !audio.paused) {
       audio.pause();
     }
-  }, [isPlaying, setIsPlaying]);
+  }, [isPlaying, setIsPlaying, trackUrl]);
   // Sync Seek (Threshold check)
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio && audio.src && Math.abs(audio.currentTime - currentTime) > 1.2) {
+    if (audio && audio.getAttribute('src') && Math.abs(audio.currentTime - currentTime) > 1.2) {
       audio.currentTime = currentTime;
     }
   }, [currentTime]);
-  // Optimized high-precision sync loop
+  // High-precision sync loop (Optimized to avoid re-creating on every tick)
   useEffect(() => {
-    let isActive = true;
     const update = () => {
-      if (audioRef.current && isPlaying && isActive && audioRef.current.src) {
-        const audioTime = audioRef.current.currentTime;
-        // Throttled update to avoid excessive re-renders if the drift is tiny
-        if (Math.abs(audioTime - currentTime) > 0.15) {
+      const audio = audioRef.current;
+      if (audio && syncStateRef.current.isPlaying && audio.getAttribute('src')) {
+        const audioTime = audio.currentTime;
+        // Throttled store update: only update if drift is significant (>100ms)
+        if (Math.abs(audioTime - syncStateRef.current.currentTime) > 0.1) {
           setCurrentTime(audioTime);
         }
       }
@@ -132,9 +139,8 @@ export function useAudioEngine() {
     };
     frameRef.current = requestAnimationFrame(update);
     return () => {
-      isActive = false;
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
-  }, [isPlaying, setCurrentTime, currentTime]);
+  }, [setCurrentTime]);
   return audioRef.current;
 }
