@@ -1,8 +1,7 @@
 {
-  "rewrites": [
-    {
-      "source": "/((?!api/.*|assets/.*|favicon.ico).*)",
-      "destination": "/index.html"
-    }
+  "outputDirectory": "dist/client",
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/index.html" }
   ]
 }
