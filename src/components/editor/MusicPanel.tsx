@@ -13,7 +13,6 @@ export function MusicPanel() {
   const [query, setQuery] = React.useState('');
   const [debouncedQuery] = useDebounceValue(query, 500);
   const [error, setError] = React.useState<string | null>(null);
-  // Zustand Zero-Tolerance selectors
   const isSearching = useEditorStore((s) => s.isSearching);
   const searchResults = useEditorStore((s) => s.searchResults);
   const currentTrackId = useEditorStore((s) => s.track?.id);
@@ -69,7 +68,7 @@ export function MusicPanel() {
     }
   };
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-32">
       <div className="relative group">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <Input
@@ -111,7 +110,7 @@ export function MusicPanel() {
             {isSearching && <Loader2 className="w-3 h-3 animate-spin" />}
           </h3>
         )}
-        <div className="space-y-2 pb-4">
+        <div className="space-y-2">
           {isSearching ? (
             Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 p-3 bg-secondary/20 rounded-xl">

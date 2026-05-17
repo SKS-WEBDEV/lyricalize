@@ -5,10 +5,11 @@ import { safeError } from '@/lib/utils';
 export function useAudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number>(0);
-  // Ref to track latest values for the RAF loop without re-triggering effects
   const syncStateRef = useRef({ currentTime: 0, isPlaying: false });
+  // Strictly primitive selectors to avoid getSnapshot issues
   const isPlaying = useEditorStore((s) => s.isPlaying);
   const volume = useEditorStore((s) => s.volume);
+  const isMuted = useEditorStore((s) => s.isMuted);
   const trackUrl = useEditorStore((s) => s.track?.url);
   const trackId = useEditorStore((s) => s.track?.id);
   const currentTime = useEditorStore((s) => s.currentTime);
@@ -16,7 +17,6 @@ export function useAudioEngine() {
   const setCurrentTime = useEditorStore((s) => s.setCurrentTime);
   const setDuration = useEditorStore((s) => s.setDuration);
   const setIsBuffering = useEditorStore((s) => s.setIsBuffering);
-  // Update refs on every change to keep sync loop fresh without dependency thrashing
   useEffect(() => {
     syncStateRef.current = { currentTime, isPlaying };
   }, [currentTime, isPlaying]);
@@ -37,10 +37,9 @@ export function useAudioEngine() {
     const onWaiting = () => setIsBuffering(true);
     const onPlaying = () => setIsBuffering(false);
     const onError = () => {
-      // Enhanced check for empty src to suppress false errors on cleanup or reset
       const currentSrc = audio.getAttribute('src');
       if (!currentSrc || currentSrc === "" || currentSrc === window.location.href) {
-        return; 
+        return;
       }
       const error = audio.error;
       let message = 'Audio playback error';
@@ -67,7 +66,7 @@ export function useAudioEngine() {
     audio.addEventListener('error', onError);
     return () => {
       audio.pause();
-      audio.removeAttribute('src'); // Use removeAttribute instead of empty string
+      audio.removeAttribute('src');
       audio.load();
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
@@ -79,16 +78,13 @@ export function useAudioEngine() {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
   }, [setCurrentTime, setDuration, setIsBuffering, setIsPlaying]);
-  // Sync Source
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (trackUrl) {
       setIsBuffering(true);
-      audio.pause();
       audio.src = trackUrl;
       audio.load();
-      // Logic for auto-resume if it was already playing is handled by 'Sync Playback State' effect
     } else {
       audio.pause();
       audio.removeAttribute('src');
@@ -96,13 +92,12 @@ export function useAudioEngine() {
       setIsBuffering(false);
     }
   }, [trackUrl, trackId, setIsBuffering, setIsPlaying]);
-  // Sync Volume
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
+      audioRef.current.muted = isMuted;
     }
-  }, [volume]);
-  // Sync Playback State (Handles all Play/Pause logic centrally)
+  }, [volume, isMuted]);
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audio.getAttribute('src')) return;
@@ -117,20 +112,17 @@ export function useAudioEngine() {
       audio.pause();
     }
   }, [isPlaying, setIsPlaying, trackUrl]);
-  // Sync Seek (Threshold check)
   useEffect(() => {
     const audio = audioRef.current;
     if (audio && audio.getAttribute('src') && Math.abs(audio.currentTime - currentTime) > 1.2) {
       audio.currentTime = currentTime;
     }
   }, [currentTime]);
-  // High-precision sync loop (Optimized to avoid re-creating on every tick)
   useEffect(() => {
     const update = () => {
       const audio = audioRef.current;
       if (audio && syncStateRef.current.isPlaying && audio.getAttribute('src')) {
         const audioTime = audio.currentTime;
-        // Throttled store update: only update if drift is significant (>100ms)
         if (Math.abs(audioTime - syncStateRef.current.currentTime) > 0.1) {
           setCurrentTime(audioTime);
         }

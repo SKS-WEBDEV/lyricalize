@@ -8,8 +8,9 @@ import { useAudioEngine } from '@/hooks/useAudioEngine';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, Settings2 } from 'lucide-react';
+import { Menu } from 'lucide-react';
 export function HomePage() {
+  // Always call hooks at top level for stability
   useAudioEngine();
   const isMobile = useIsMobile();
   return (
@@ -35,11 +36,10 @@ export function HomePage() {
         {!isMobile && <Sidebar />}
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col relative min-w-0">
-          {/* Canvas - Responsiveness handled via internal padding */}
           <Canvas />
         </main>
       </div>
-      {/* Responsive Bottom Player */}
+      {/* Fixed Bottom Player */}
       <BottomPlayer />
       <Toaster richColors position="top-right" />
     </div>

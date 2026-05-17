@@ -41,7 +41,7 @@ export function DesignPanel() {
   const setLyricOffset = useEditorStore((s) => s.setLyricOffset);
   return (
     <ScrollArea className="h-[calc(100vh-180px)] pr-4">
-      <div className="space-y-8 pb-12">
+      <div className="space-y-8 pb-32">
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-primary">
             <Type className="w-4 h-4" />
@@ -85,32 +85,22 @@ export function DesignPanel() {
             <span className="text-xs font-bold uppercase tracking-widest">Timing & Sync</span>
             <TooltipProvider>
               <Tooltip>
-                <TooltipTrigger>
-                  <Info className="w-3 h-3 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-[10px] w-48">Adjust if lyrics are early or late. Positive values delay lyrics, negative values advance them.</p>
-                </TooltipContent>
+                <TooltipTrigger><Info className="w-3 h-3 text-muted-foreground" /></TooltipTrigger>
+                <TooltipContent><p className="text-[10px] w-48">Adjust if lyrics are early or late. Positive values delay lyrics.</p></TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-4">
               <Label className="flex-1">Offset (ms)</Label>
-              <Input 
-                type="number" 
-                value={lyricOffset} 
+              <Input
+                type="number"
+                value={lyricOffset}
                 onChange={(e) => setLyricOffset(parseInt(e.target.value) || 0)}
                 className="w-24 h-8 text-xs text-center rounded-lg"
               />
             </div>
-            <Slider 
-              value={[lyricOffset]} 
-              min={-5000} 
-              max={5000} 
-              step={50} 
-              onValueChange={([v]) => setLyricOffset(v)} 
-            />
+            <Slider value={[lyricOffset]} min={-5000} max={5000} step={50} onValueChange={([v]) => setLyricOffset(v)} />
           </div>
         </section>
         <Separator className="opacity-50" />
@@ -152,10 +142,8 @@ export function DesignPanel() {
                 <button
                   key={anim.value}
                   onClick={() => setStyle({ animationType: anim.value as any })}
-                  className={`p-3 text-[10px] uppercase tracking-tighter rounded-xl border transition-all ${
-                    animationType === anim.value
-                    ? 'bg-primary text-primary-foreground border-primary shadow-lg scale-105'
-                    : 'bg-secondary hover:bg-accent border-transparent'
+                  className={`p-3 text-[10px] uppercase font-bold rounded-xl border transition-all ${
+                    animationType === anim.value ? 'bg-primary text-primary-foreground' : 'bg-secondary'
                   }`}
                 >
                   {anim.name}

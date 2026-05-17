@@ -27,13 +27,7 @@ export function LyricsPanel() {
     if (trackId && trackTitle && trackArtist) {
       const fetchLrcs = async () => {
         try {
-          const trackObj = { 
-            id: trackId, 
-            title: trackTitle, 
-            artist: trackArtist, 
-            albumArt: '', 
-            duration: trackDuration ?? 0 
-          };
+          const trackObj = { id: trackId, title: trackTitle, artist: trackArtist, albumArt: '', duration: trackDuration ?? 0 };
           const options = await getLyricsOptions(trackObj);
           setLrcOptions(options);
         } catch (error) {
@@ -78,7 +72,7 @@ export function LyricsPanel() {
   }, [lyrics, currentTime]);
   return (
     <ScrollArea className="h-[calc(100vh-180px)] pr-4">
-      <div className="space-y-8 pb-12">
+      <div className="space-y-8 pb-32">
         {trackId && (
           <div className="space-y-4">
             <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">

@@ -39,6 +39,7 @@ interface EditorState {
   currentTime: number;
   duration: number;
   volume: number;
+  isMuted: boolean;
   isBuffering: boolean;
   // Track & Lyrics
   track: Track | null;
@@ -57,6 +58,7 @@ interface EditorState {
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
   setVolume: (volume: number) => void;
+  setIsMuted: (isMuted: boolean) => void;
   setIsBuffering: (isBuffering: boolean) => void;
   setTrack: (track: Track | null) => void;
   setLyrics: (lyrics: LyricLine[]) => void;
@@ -73,6 +75,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   currentTime: 0,
   duration: 0,
   volume: 0.8,
+  isMuted: false,
   isBuffering: false,
   track: null,
   lyrics: [],
@@ -99,6 +102,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (duration) => set({ duration }),
   setVolume: (volume) => set({ volume }),
+  setIsMuted: (isMuted) => set({ isMuted }),
   setIsBuffering: (isBuffering) => set({ isBuffering }),
   setTrack: (track) => set({ track }),
   setLyrics: (lyrics) => set({ lyrics }),
