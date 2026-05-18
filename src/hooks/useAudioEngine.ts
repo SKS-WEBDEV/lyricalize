@@ -142,7 +142,7 @@ export function useAudioEngine() {
       const url =
         track?.url ||
         track?.downloadUrl?.at(-1)?.url ||
-        track?.downloadUrl?.[0]?.url ||
+        track?.downloadUrl?.[4]?.url ||
         '';
 
       console.log("Resolved URL:", url);
