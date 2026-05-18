@@ -1,8 +1,10 @@
 import { Track, LyricLine } from '@/store/useEditorStore';
 import { parseLRC } from './lrcParser';
 import { safeError } from './utils';
+
 const SAAVN_API_BASE = 'https://zylaes-saavn.vercel.app/api';
 const LRCLIB_API_BASE = 'https://lrclib.net/api';
+
 export interface LrcOption {
   id: number;
   name: string;
@@ -13,6 +15,7 @@ export interface LrcOption {
   syncedLyrics?: string;
   plainLyrics?: string;
 }
+
 export async function searchTracks(query: string): Promise<Track[]> {
   try {
     const response = await fetch(`${SAAVN_API_BASE}/search/songs?query=${encodeURIComponent(query)}&limit=15`);
@@ -20,14 +23,13 @@ export async function searchTracks(query: string): Promise<Track[]> {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
     const result = await response.json();
-    // The zylaes-saavn API usually returns data nested in .data
+
+    // The zylaes-saavn API returns songs nested in data.results
     const songs = result.data?.results || result.data || [];
     if (!Array.isArray(songs)) return [];
+
     return songs.map((song: any) => {
       const downloadUrls = Array.isArray(song.downloadUrl) ? song.downloadUrl : [];
-      const preferred = downloadUrls.find((d: any) => typeof d?.quality === 'string' && d.quality.includes('320'))
-        || downloadUrls.find((d: any) => typeof d?.quality === 'string' && d.quality.includes('160'))
-        || downloadUrls[downloadUrls.length - 1];
 
       return {
         id: song.id,
@@ -39,16 +41,17 @@ export async function searchTracks(query: string): Promise<Track[]> {
           ? song.image[song.image.length - 1]?.url
           : song.image || '',
         duration: Number(song.duration) || 0,
-        url: preferred?.url || '',
+        // url is intentionally omitted — the audio engine resolves
+        // the stream URL directly from downloadUrl[] at playback time.
         downloadUrl: downloadUrls.map((d: any) => ({ quality: d?.quality, url: d?.url })),
       };
     });
-
   } catch (error) {
     console.error('Saavn Search Error:', safeError(error));
     return [];
   }
 }
+
 export async function getLyricsOptions(track: Track): Promise<LrcOption[]> {
   try {
     const query = `track_name=${encodeURIComponent(track.title)}&artist_name=${encodeURIComponent(track.artist)}`;
@@ -60,6 +63,7 @@ export async function getLyricsOptions(track: Track): Promise<LrcOption[]> {
     return [];
   }
 }
+
 export async function getBestMatchLyrics(track: Track): Promise<{ raw: string; parsed: LyricLine[] } | null> {
   try {
     const query = `track_name=${encodeURIComponent(track.title)}&artist_name=${encodeURIComponent(track.artist)}&duration=${track.duration}`;
