@@ -1,3 +1,5 @@
 
 # Bootstrap marker
 .bootstrap-complete
+node_modules
+node_modules/@cloudflare/workerd-windows-64/bin/workerd.exe

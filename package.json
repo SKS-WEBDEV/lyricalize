@@ -86,7 +86,7 @@
     "@cloudflare/workers-types": "^4.20250424.0",
     "@eslint/js": "^9.22.0",
     "@types/node": "^22.15.3",
-    "@types/react": "^18.3.1",
+    "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
