@@ -3,6 +3,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { toast } from 'sonner';
 import { safeError } from '@/lib/utils';
 import { logger } from '@/utils/logger';
+
 export function useAudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number>(0);
@@ -19,6 +20,7 @@ export function useAudioEngine() {
     setDuration, 
     setIsBuffering 
   } = useEditorStore.getState();
+
   // Initialization: Setup audio element and event listeners
   useEffect(() => {
     const audio = new Audio();
@@ -41,8 +43,10 @@ export function useAudioEngine() {
         });
       });
     });
+
     audio.crossOrigin = "anonymous";
     audioRef.current = audio;
+
     const onPlay = () => {
       syncStateRef.current.isPlaying = true;
       useEditorStore.getState().setIsPlaying(true);
@@ -90,6 +94,7 @@ export function useAudioEngine() {
       useEditorStore.getState().setIsPlaying(false);
       useEditorStore.getState().setIsBuffering(false);
     };
+
     audio.addEventListener('play', onPlay);
     audio.addEventListener('pause', onPause);
     audio.addEventListener('ended', onEnded);
@@ -98,6 +103,7 @@ export function useAudioEngine() {
     audio.addEventListener('waiting', onWaiting);
     audio.addEventListener('playing', onPlaying);
     audio.addEventListener('error', onError);
+
     // Sync Loop: Decoupled from React Render Cycle
     const update = () => {
       const a = audioRef.current;
@@ -112,6 +118,7 @@ export function useAudioEngine() {
       frameRef.current = requestAnimationFrame(update);
     };
     frameRef.current = requestAnimationFrame(update);
+
     return () => {
       audio.pause();
       audio.removeAttribute('src');
@@ -127,68 +134,71 @@ export function useAudioEngine() {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
   }, []);
+
   // Track & Source Subscription
   useEffect(() => {
-  return (useEditorStore.subscribe as any)(
-    (state) => state.track,
-    (track) => {
-      const audio = audioRef.current;
-      if (!audio) return;
+    return (useEditorStore.subscribe as any)(
+      (state) => state.track,
+      (track) => {
+        const audio = audioRef.current;
+        if (!audio) return;
 
-      console.group("🎵 Track Change");
+        console.group("🎵 Track Change");
+        console.log("Track object:", track);
 
-      console.log("Track object:", track);
+        // FIX: track.url from the API is a JioSaavn page link, NOT a streamable audio URL.
+        // Audio URLs must always be sourced exclusively from downloadUrl[].url.
+        // Priority: highest quality (last) → explicit 320kbps index → lowest quality fallback.
+        const url =
+          track?.downloadUrl?.at(-1)?.url ||  // Best quality (e.g. 320kbps)
+          track?.downloadUrl?.[4]?.url ||      // Explicit 320kbps fallback
+          track?.downloadUrl?.[0]?.url ||      // Last resort: lowest quality
+          '';
 
-      const url =
-        track?.url ||
-        track?.downloadUrl?.at(-1)?.url ||
-        track?.downloadUrl?.[4]?.url ||
-        '';
+        console.log("Resolved audio URL:", url);
 
-      console.log("Resolved URL:", url);
+        if (url) {
+          useEditorStore.getState().setIsBuffering(true);
+          useEditorStore.getState().setDuration(0);
+          syncStateRef.current.duration = 0;
 
-      if (url) {
-        useEditorStore.getState().setIsBuffering(true);
-        useEditorStore.getState().setDuration(0);
-        syncStateRef.current.duration = 0;
+          audio.pause();
+          audio.src = url;
+          audio.load();
 
-        audio.pause();
-        audio.src = url;
-        audio.load();
+          console.log("Audio src set to:", audio.src);
 
-        console.log("Audio src set to:", audio.src);
+          if (useEditorStore.getState().isPlaying) {
+            audio.play().then(() => {
+              console.log("✅ Auto playback success");
+            }).catch((err) => {
+              console.error("❌ Auto playback failed:", err);
+            });
+          }
+        } else {
+          console.warn("⚠️ No valid audio URL found in downloadUrl");
 
-        if (useEditorStore.getState().isPlaying) {
-          audio.play().then(() => {
-            console.log("✅ Auto playback success");
-          }).catch((err) => {
-            console.error("❌ Auto playback failed:", err);
-          });
+          audio.pause();
+          audio.removeAttribute('src');
+
+          useEditorStore.getState().setIsPlaying(false);
+          useEditorStore.getState().setIsBuffering(false);
+          useEditorStore.getState().setDuration(0);
+
+          syncStateRef.current.duration = 0;
         }
-      } else {
-        console.warn("⚠️ No valid audio URL found");
 
-        audio.pause();
-        audio.removeAttribute('src');
-
-        useEditorStore.getState().setIsPlaying(false);
-        useEditorStore.getState().setIsBuffering(false);
-        useEditorStore.getState().setDuration(0);
-
-        syncStateRef.current.duration = 0;
+        console.groupEnd();
       }
+    );
+  }, []);
 
-      console.groupEnd();
-    }
-  );
-}, []);
   // Playback Control Subscription
   useEffect(() => {
     return (useEditorStore.subscribe as any)(
       (state) => state.isPlaying,
       (playing) => {
         const audio = audioRef.current;
-        // if (!audio || !audio.getAttribute('src')) return;
         if (!audio || !audio.src) return;
         if (playing && audio.paused) {
           audio.play().then(() => {
@@ -203,6 +213,7 @@ export function useAudioEngine() {
       }
     );
   }, []);
+
   // Volume & Mute Subscription
   useEffect(() => {
     return (useEditorStore.subscribe as any)(
@@ -215,13 +226,13 @@ export function useAudioEngine() {
       }
     );
   }, []);
+
   // Manual Seek Subscription
   useEffect(() => {
     return (useEditorStore.subscribe as any)(
       (state) => state.currentTime,
       (time) => {
         const audio = audioRef.current;
-        // if (!audio || !audio.getAttribute('src')) return;
         if (!audio || !audio.src) return;
         // Only seek if the drift is large (user interaction/seek)
         // This prevents the sync loop from fighting with the manual seek
@@ -232,5 +243,6 @@ export function useAudioEngine() {
       }
     );
   }, []);
+
   return audioRef.current;
 }
