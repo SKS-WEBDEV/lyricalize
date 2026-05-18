@@ -21,7 +21,24 @@ export function MusicPanel() {
   const setTrack = useEditorStore((s) => s.setTrack);
   const setRawLrc = useEditorStore((s) => s.setRawLrc);
   const setLyrics = useEditorStore((s) => s.setLyrics);
-  const setIsBuffering = useEditorStore((s) => s.setIsBuffering);
+
+  const waitForAudioReady = async (trackId: string, timeout = 5000) => {
+    return new Promise<void>((resolve) => {
+      const unsubscribe = (useEditorStore.subscribe as any)(
+        (state: any) => ({ trackId: state.track?.id, duration: state.duration }),
+        (next: { trackId?: string; duration: number }) => {
+          if (next.trackId === trackId && next.duration > 0) {
+            unsubscribe();
+            resolve();
+          }
+        }
+      );
+      setTimeout(() => {
+        unsubscribe();
+        resolve();
+      }, timeout);
+    });
+  };
   useEffect(() => {
     if (!debouncedQuery) {
       setSearchResults([]);
@@ -49,7 +66,9 @@ export function MusicPanel() {
   const handleSelectTrack = async (track: any) => {
     try {
       setTrack(track);
-      setIsBuffering(true);
+      setRawLrc('');
+      setLyrics([]);
+      await waitForAudioReady(track.id);
       const match = await getBestMatchLyrics(track);
       if (match) {
         setRawLrc(match.raw);
@@ -63,8 +82,6 @@ export function MusicPanel() {
     } catch (err) {
       console.error('Track selection error:', err);
       toast.error('Failed to load track lyrics.');
-    } finally {
-      setIsBuffering(false);
     }
   };
   return (
@@ -75,7 +92,7 @@ export function MusicPanel() {
           placeholder="Find your track..."
           className="pl-10 h-11 bg-secondary/50 border-transparent focus:bg-background transition-all rounded-xl"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e: { target: { value: any; }; }) => setQuery(e.target.value)}
         />
       </div>
       {error && (

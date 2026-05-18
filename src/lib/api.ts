@@ -29,7 +29,12 @@ export async function searchTracks(query: string): Promise<Track[]> {
     if (!Array.isArray(songs)) return [];
 
     return songs.map((song: any) => {
-      const downloadUrls = Array.isArray(song.downloadUrl) ? song.downloadUrl : [];
+      const rawDownloadUrl = song.downloadUrl;
+      const downloadUrls = Array.isArray(rawDownloadUrl)
+        ? rawDownloadUrl
+        : rawDownloadUrl && typeof rawDownloadUrl === 'object'
+        ? Object.values(rawDownloadUrl)
+        : [];
 
       return {
         id: song.id,
