@@ -115,6 +115,9 @@ export default ({ mode }: { mode: string }) => {
         },
       },
     },
+    ssr: {
+      noExternal: ["framer-motion"], // Bundle framer-motion instead of treating as external
+    },
     customLogger: env.VITE_LOGGER_TYPE === 'json' ? customLogger : undefined,
     // Enable source maps in development too
     css: {
@@ -140,7 +143,7 @@ export default ({ mode }: { mode: string }) => {
       // This is still crucial for reducing the time from when `bun run dev`
       // is executed to when the server is actually ready.
       include: ["react", "react-dom", "react-router-dom"],
-      exclude: ["agents"], // Exclude agents package from pre-bundling due to Node.js dependencies
+      exclude: ["agents", "framer-motion"], // Exclude framer-motion due to export resolution issues
       force: true,
     },
     define: {
