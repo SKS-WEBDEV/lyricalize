@@ -28,6 +28,14 @@ export function useAudioEngine() {
     console.log(`${TAG} 🔧 Initializing audio engine...`);
 
     const audio = new Audio();
+    audio.id = 'lyricalize-audio-player';
+    
+    // Add the audio element to the DOM for proper browser support
+    // Some browsers require the audio element to be in the DOM for playback
+    if (!document.getElementById('lyricalize-audio-player')) {
+      document.body.appendChild(audio);
+      console.log(`${TAG} 📍 Audio element added to DOM`);
+    }
 
     // --- Native browser audio event logging ---
     // These fire in order during a normal load: loadstart → loadeddata → canplay → playing
@@ -168,10 +176,12 @@ export function useAudioEngine() {
     console.log(`${TAG} 🔄 RAF sync loop started.`);
 
     return () => {
-      console.log(`${TAG} 🧹 Cleaning up audio engine — pausing, clearing src, cancelling RAF.`);
+      console.log(`${TAG} 🧹 Cleaning up audio engine — pausing, clearing src, removing from DOM, cancelling RAF.`);
       audio.pause();
       audio.removeAttribute('src');
       audio.load();
+      
+      // Remove event listeners
       audio.removeEventListener('play', onPlay);
       audio.removeEventListener('pause', onPause);
       audio.removeEventListener('ended', onEnded);
@@ -180,6 +190,13 @@ export function useAudioEngine() {
       audio.removeEventListener('waiting', onWaiting);
       audio.removeEventListener('playing', onPlaying);
       audio.removeEventListener('error', onError);
+      
+      // Remove from DOM if it's still there
+      if (audio.parentNode) {
+        audio.parentNode.removeChild(audio);
+        console.log(`${TAG} 📍 Audio element removed from DOM`);
+      }
+      
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
   }, []);
@@ -196,19 +213,48 @@ export function useAudioEngine() {
         console.log('Track object:', track);
         console.log('downloadUrl array:', track?.downloadUrl);
 
+        if (!track) {
+          console.log(`${TAG} ⚠️ Track is null/undefined. Clearing audio source.`);
+          audio.pause();
+          audio.removeAttribute('src');
+          useEditorStore.getState().setIsPlaying(false);
+          useEditorStore.getState().setIsBuffering(false);
+          useEditorStore.getState().setDuration(0);
+          syncStateRef.current.duration = 0;
+          console.groupEnd();
+          return;
+        }
+
+        // Validate downloadUrl array exists and has entries
+        const downloadUrls = track?.downloadUrl;
+        if (!Array.isArray(downloadUrls) || downloadUrls.length === 0) {
+          console.warn(`${TAG} ⚠️ No valid downloadUrl entries found for track:`, {
+            trackId: track.id,
+            trackName: track.title,
+            downloadUrlType: typeof downloadUrls,
+            downloadUrlLength: downloadUrls?.length
+          });
+          console.groupEnd();
+          return;
+        }
+
         // track.url from the API is a JioSaavn page link, NOT a streamable audio URL.
         // Audio URLs must always be sourced exclusively from downloadUrl[].url.
-        // Priority: highest quality (last) → explicit 320kbps index → lowest quality fallback.
-        const best    = track?.downloadUrl?.at(-1);
-        const index4  = track?.downloadUrl?.[4];
-        const index0  = track?.downloadUrl?.[0];
+        // Priority: highest quality (last) → 320kbps → 160kbps → lowest quality fallback
+        const bestQuality = downloadUrls[downloadUrls.length - 1]; // Highest quality (last)
+        const index320 = downloadUrls.find((d) => d.quality === '320kbps');
+        const index160 = downloadUrls.find((d) => d.quality === '160kbps');
+        const fallback = downloadUrls[0]; // Lowest quality
 
-        console.log('Best quality entry (at(-1)):', best);
-        console.log('Index [4] entry:', index4);
-        console.log('Index [0] fallback entry:', index0);
+        console.log('Best quality entry (last):', bestQuality);
+        console.log('320kbps entry:', index320);
+        console.log('160kbps entry:', index160);
+        console.log('Fallback entry:', fallback);
 
-        const url = best?.url || index4?.url || index0?.url || '';
-        console.log(`Resolved audio URL: "${url}" (quality: ${best?.quality ?? index4?.quality ?? index0?.quality ?? 'unknown'})`);
+        const url = bestQuality?.url || index320?.url || index160?.url || fallback?.url || '';
+        const selectedQuality = bestQuality?.quality ?? index320?.quality ?? index160?.quality ?? fallback?.quality ?? 'unknown';
+        
+        console.log(`Resolved audio URL: "${url}" (quality: ${selectedQuality})`);
 
         if (url) {
           console.log(`${TAG} 📥 Setting audio src and calling load()...`);

@@ -65,6 +65,16 @@ export function MusicPanel() {
   }, [debouncedQuery, setIsSearching, setSearchResults]);
   const handleSelectTrack = async (track: any) => {
     try {
+      console.log('[MusicPanel] Track selected:', {
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        hasDownloadUrl: !!track.downloadUrl,
+        downloadUrlLength: track.downloadUrl?.length,
+        downloadUrlSample: track.downloadUrl?.[0],
+        fullTrack: track
+      });
+      
       setTrack(track);
       setRawLrc('');
       setLyrics([]);

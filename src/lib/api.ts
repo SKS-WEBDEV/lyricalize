@@ -30,11 +30,27 @@ export async function searchTracks(query: string): Promise<Track[]> {
 
     return songs.map((song: any) => {
       const rawDownloadUrl = song.downloadUrl;
-      const downloadUrls = Array.isArray(rawDownloadUrl)
-        ? rawDownloadUrl
-        : rawDownloadUrl && typeof rawDownloadUrl === 'object'
-        ? Object.values(rawDownloadUrl)
-        : [];
+      
+      // Process downloadUrl with enhanced debugging
+      let downloadUrls: Array<{ quality: string; url: string }> = [];
+      
+      if (Array.isArray(rawDownloadUrl)) {
+        downloadUrls = rawDownloadUrl;
+      } else if (rawDownloadUrl && typeof rawDownloadUrl === 'object') {
+        downloadUrls = Object.values(rawDownloadUrl) as any[];
+      }
+      
+      // Ensure all entries have valid quality and url
+      const validDownloadUrls = downloadUrls.filter(
+        (d: any) => d?.url && d?.quality
+      );
+
+      if (!validDownloadUrls.length) {
+        console.warn(`[searchTracks] Song ${song.id} has no valid downloadUrl entries`, {
+          rawCount: downloadUrls.length,
+          song: { id: song.id, name: song.name }
+        });
+      }
 
       return {
         id: song.id,
@@ -46,9 +62,8 @@ export async function searchTracks(query: string): Promise<Track[]> {
           ? song.image[song.image.length - 1]?.url
           : song.image || '',
         duration: Number(song.duration) || 0,
-        // url is intentionally omitted — the audio engine resolves
-        // the stream URL directly from downloadUrl[] at playback time.
-        downloadUrl: downloadUrls.map((d: any) => ({ quality: d?.quality, url: d?.url })),
+        url: song.url, // JioSaavn page link (for reference)
+        downloadUrl: validDownloadUrls,
       };
     });
   } catch (error) {
