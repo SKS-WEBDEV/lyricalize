@@ -5,6 +5,24 @@ import { safeError } from './utils';
 const SAAVN_API_BASE = 'https://zylaes-saavn.vercel.app/api';
 const LRCLIB_API_BASE = 'https://lrclib.net/api';
 
+const normalizeTrackTitle = (title: string): string => {
+  if (!title) return title;
+  const decoded = title
+    .replace(/&quot;|&#34;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/gi, '&');
+
+  const cleaned = decoded
+    .replace(/\(\s*From\s*["']?([^"')]+)["']?\s*\)/gi, ' $1 ')
+    .replace(/\[\s*From\s*["']?([^"\]]+)["']?\s*\]/gi, ' $1 ')
+    .replace(/["'“”‘’]/g, ' ')
+    .replace(/[<>]/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return cleaned;
+};
+
 export interface LrcOption {
   id: number;
   name: string;
@@ -85,11 +103,12 @@ export async function getLyricsOptions(track: Track): Promise<LrcOption[]> {
   };
 
   try {
-    const query = `track_name=${encodeURIComponent(track.title)}&artist_name=${encodeURIComponent(track.artist)}`;
+    const normalizedTitle = normalizeTrackTitle(track.title);
+    const query = `track_name=${encodeURIComponent(normalizedTitle)}&artist_name=${encodeURIComponent(track.artist)}`;
     let data = await searchTrack(query);
 
     if (!data.length) {
-      const fallbackQuery = `q=${encodeURIComponent(`${track.title} ${track.artist}`)}`;
+      const fallbackQuery = `q=${encodeURIComponent(`${normalizedTitle} ${track.artist}`)}`;
       data = await searchTrack(fallbackQuery);
     }
 
