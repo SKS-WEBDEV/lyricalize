@@ -112,8 +112,6 @@ export function useAudioEngine() {
       abort:          { emoji: '🛑', detail: () => `Loading aborted.` },
       emptied:        { emoji: '🗑️',  detail: () => `Audio element emptied (src changed or load() called).` },
       durationchange: { emoji: '⏱️',  detail: () => `Duration changed to ${audio.duration}s` },
-      timeupdate:     { emoji: '🕐', detail: () => `Time updated: ${audio.currentTime}s` },
-      volumechange:   { emoji: '🔊', detail: () => `Volume=${audio.volume}, muted=${audio.muted}` },
       error:          { emoji: '❌', detail: () => `Error code=${audio.error?.code}, message=${audio.error?.message}` },
       seeked:         { emoji: '⏭️',  detail: () => `Seeked to ${audio.currentTime}s` },
       seeking:        { emoji: '🔍', detail: () => `Seeking to a new position...` },
@@ -144,8 +142,7 @@ export function useAudioEngine() {
     };
 
     const onEnded = () => {
-      logger.debug(TAG, '🏁 [onEnded] Track finished. Resetting currentTime to 0.');
-      syncStateRef.current.isPlaying = false;
+      logger.info(TAG, '🏁 [onEnded] Track finished.');
       useEditorStore.getState().setIsPlaying(false);
       useEditorStore.getState().setCurrentTime(0);
     };
@@ -280,13 +277,32 @@ export function useAudioEngine() {
             logger.debug(TAG, '⚠️ Track is null/undefined. Clearing audio source.');
             audio.pause();
             audio.removeAttribute('src');
+            audio.load();
+            if (objectUrlRef.current) {
+              URL.revokeObjectURL(objectUrlRef.current);
+              objectUrlRef.current = null;
+            }
             useEditorStore.getState().setCurrentAudioUrl(null);
             useEditorStore.getState().setIsPlaying(false);
             useEditorStore.getState().setIsBuffering(false);
             useEditorStore.getState().setDuration(0);
+            useEditorStore.getState().setCurrentTime(0);
+            syncStateRef.current.currentTime = 0;
             syncStateRef.current.duration = 0;
             return;
           }
+
+          // Pause and clear the previous audio source before loading a new track
+          audio.pause();
+          audio.removeAttribute('src');
+          audio.load();
+          if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+          }
+          useEditorStore.getState().setCurrentAudioUrl(null);
+          useEditorStore.getState().setCurrentTime(0);
+          syncStateRef.current.currentTime = 0;
 
           // Validate downloadUrl array exists and has entries
           const downloadUrls = track?.downloadUrl;
@@ -355,40 +371,44 @@ export function useAudioEngine() {
       (playing) => {
         const audio = audioRef.current;
         if (!audio || !audio.src) {
-          logger.debug(TAG, '⏭️ [Playback Sub] Skipped — no audio src set.');
           return;
         }
-        logger.debug(TAG, `🎛️ [Playback Sub] isPlaying changed to: ${playing}. audio.paused=${audio.paused}`);
         if (playing && audio.paused) {
-          logger.debug(TAG, '▶️ [Playback Sub] Calling audio.play()...');
-          audio.play().then(() => {
-            logger.debug(TAG, '✅ [Playback Sub] Playback started.');
-          }).catch((err) => {
+          audio.play().catch((err) => {
             logger.error(TAG, '❌ [Playback Sub] play() rejected:', err);
             useEditorStore.getState().setIsPlaying(false);
           });
         } else if (!playing && !audio.paused) {
-          logger.debug(TAG, '⏸️ [Playback Sub] Calling audio.pause().');
           audio.pause();
-        } else {
-          logger.debug(TAG, 'ℹ️ [Playback Sub] No action needed (already in desired state).');
         }
       }
     );
   }, []);
 
-  // Volume & Mute Subscription
+  // Volume & Mute Subscriptions
   useEffect(() => {
-    return (useEditorStore.subscribe as any)(
-      (state) => ({ volume: state.volume, isMuted: state.isMuted }),
-      ({ volume, isMuted }) => {
+    const unsubscribeVolume = (useEditorStore.subscribe as any)(
+      (state) => state.volume,
+      (volume) => {
         if (audioRef.current) {
-          logger.debug(TAG, `🔊 [Volume Sub] volume=${volume}, muted=${isMuted}`);
           audioRef.current.volume = volume;
+        }
+      }
+    );
+
+    const unsubscribeMute = (useEditorStore.subscribe as any)(
+      (state) => state.isMuted,
+      (isMuted) => {
+        if (audioRef.current) {
           audioRef.current.muted = isMuted;
         }
       }
     );
+
+    return () => {
+      unsubscribeVolume();
+      unsubscribeMute();
+    };
   }, []);
 
   // Manual Seek Subscription

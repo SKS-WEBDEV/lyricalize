@@ -73,11 +73,36 @@ export async function searchTracks(query: string): Promise<Track[]> {
 }
 
 export async function getLyricsOptions(track: Track): Promise<LrcOption[]> {
+  const buildSearchUrl = (query: string) => `${LRCLIB_API_BASE}/search?${query}`;
+
+  const searchTrack = async (query: string) => {
+    const response = await fetch(buildSearchUrl(query));
+    if (!response.ok) {
+      throw new Error(`LRCLIB /search failed: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
+  };
+
   try {
     const query = `track_name=${encodeURIComponent(track.title)}&artist_name=${encodeURIComponent(track.artist)}`;
-    const response = await fetch(`${LRCLIB_API_BASE}/search?${query}`);
-    if (!response.ok) return [];
-    return await response.json();
+    let data = await searchTrack(query);
+
+    if (!data.length) {
+      const fallbackQuery = `q=${encodeURIComponent(`${track.title} ${track.artist}`)}`;
+      data = await searchTrack(fallbackQuery);
+    }
+
+    return data.slice(0, 15).map((item: any, index: number) => ({
+      id: Number(item.id) || index,
+      name: item.trackName || item.title || track.title,
+      trackName: item.trackName || track.title,
+      artistName: item.artistName || track.artist,
+      albumName: item.albumName || 'Unknown Album',
+      duration: Number(item.duration) || track.duration || 0,
+      syncedLyrics: item.syncedLyrics,
+      plainLyrics: item.plainLyrics,
+    }));
   } catch (error) {
     console.error('LRCLIB Search Error:', safeError(error));
     return [];
@@ -86,11 +111,15 @@ export async function getLyricsOptions(track: Track): Promise<LrcOption[]> {
 
 export async function getBestMatchLyrics(track: Track): Promise<{ raw: string; parsed: LyricLine[] } | null> {
   try {
-    const query = `track_name=${encodeURIComponent(track.title)}&artist_name=${encodeURIComponent(track.artist)}&duration=${track.duration}`;
-    const response = await fetch(`${LRCLIB_API_BASE}/get?${query}`);
-    if (!response.ok) return null;
-    const data = await response.json();
-    const raw = data.syncedLyrics || data.plainLyrics || '';
+    const candidates = await getLyricsOptions(track);
+    if (candidates.length === 0) return null;
+
+    const bestMatch =
+      candidates.find((item) => item.syncedLyrics && item.artistName?.toLowerCase().includes(track.artist.toLowerCase())) ||
+      candidates.find((item) => item.syncedLyrics) ||
+      candidates[0];
+
+    const raw = bestMatch.syncedLyrics || bestMatch.plainLyrics || '';
     return {
       raw,
       parsed: parseLRC(raw),
