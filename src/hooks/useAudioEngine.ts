@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { toast } from 'sonner';
 import { safeError } from '@/lib/utils';
+import { logger } from '@/utils/logger';
 
 // Shared log prefix for easy filtering in DevTools: filter by "[AudioEngine]"
 const TAG = '[AudioEngine]';
@@ -25,7 +26,7 @@ export function useAudioEngine() {
 
   // Initialization: Setup audio element and event listeners
   useEffect(() => {
-    console.log(`${TAG} 🔧 Initializing audio engine...`);
+    logger.debug(TAG, '🔧 Initializing audio engine...');
 
     const audio = new Audio();
     audio.id = 'lyricalize-audio-player';
@@ -34,7 +35,7 @@ export function useAudioEngine() {
     // Some browsers require the audio element to be in the DOM for playback
     if (!document.getElementById('lyricalize-audio-player')) {
       document.body.appendChild(audio);
-      console.log(`${TAG} 📍 Audio element added to DOM`);
+      logger.debug(TAG, '📍 Audio element added to DOM');
     }
 
     // --- Native browser audio event logging ---
@@ -63,30 +64,30 @@ export function useAudioEngine() {
 
     Object.entries(nativeEventLog).forEach(([event, { emoji, detail }]) => {
       audio.addEventListener(event, () => {
-        console.log(`${TAG} ${emoji} [${event}] ${detail()}`);
+        logger.debug(TAG, `${emoji} [${event}] ${detail()}`);
       });
     });
 
     audio.crossOrigin = "anonymous";
     audioRef.current = audio;
-    console.log(`${TAG} 🔧 Audio element created. crossOrigin=anonymous`);
+    logger.debug(TAG, '🔧 Audio element created. crossOrigin=anonymous');
 
     // --- Store-syncing event handlers ---
 
     const onPlay = () => {
-      console.log(`${TAG} ▶️ [onPlay] Syncing isPlaying=true to store.`);
+      logger.debug(TAG, '▶️ [onPlay] Syncing isPlaying=true to store.');
       syncStateRef.current.isPlaying = true;
       useEditorStore.getState().setIsPlaying(true);
     };
 
     const onPause = () => {
-      console.log(`${TAG} ⏸️ [onPause] Syncing isPlaying=false to store.`);
+      logger.debug(TAG, '⏸️ [onPause] Syncing isPlaying=false to store.');
       syncStateRef.current.isPlaying = false;
       useEditorStore.getState().setIsPlaying(false);
     };
 
     const onEnded = () => {
-      console.log(`${TAG} 🏁 [onEnded] Track finished. Resetting currentTime to 0.`);
+      logger.debug(TAG, '🏁 [onEnded] Track finished. Resetting currentTime to 0.');
       syncStateRef.current.isPlaying = false;
       useEditorStore.getState().setIsPlaying(false);
       useEditorStore.getState().setCurrentTime(0);
@@ -94,7 +95,7 @@ export function useAudioEngine() {
 
     const onLoadedMetadata = () => {
       const d = audio.duration;
-      console.log(`${TAG} 📋 [onLoadedMetadata] Metadata ready. duration=${d}s, readyState=${audio.readyState}`);
+      logger.debug(TAG, `📋 [onLoadedMetadata] Metadata ready. duration=${d}s, readyState=${audio.readyState}`);
       syncStateRef.current.duration = d;
       useEditorStore.getState().setDuration(d);
       useEditorStore.getState().setIsBuffering(false);
@@ -103,28 +104,28 @@ export function useAudioEngine() {
     const onDurationChange = () => {
       const d = audio.duration;
       if (isFinite(d) && d > 0) {
-        console.log(`${TAG} ⏱️ [onDurationChange] Duration settled to ${d}s — updating store.`);
+        logger.debug(TAG, `⏱️ [onDurationChange] Duration settled to ${d}s — updating store.`);
         syncStateRef.current.duration = d;
         useEditorStore.getState().setDuration(d);
       } else {
-        console.log(`${TAG} ⏱️ [onDurationChange] Duration is not yet finite (${d}) — skipping store update.`);
+        logger.debug(TAG, `⏱️ [onDurationChange] Duration is not yet finite (${d}) — skipping store update.`);
       }
     };
 
     const onWaiting = () => {
-      console.log(`${TAG} ⏳ [onWaiting] Audio is buffering — setting isBuffering=true in store.`);
+      logger.debug(TAG, '⏳ [onWaiting] Audio is buffering — setting isBuffering=true in store.');
       useEditorStore.getState().setIsBuffering(true);
     };
 
     const onPlaying = () => {
-      console.log(`${TAG} 🎶 [onPlaying] Resumed from buffer — setting isBuffering=false in store.`);
+      logger.debug(TAG, '🎶 [onPlaying] Resumed from buffer — setting isBuffering=false in store.');
       useEditorStore.getState().setIsBuffering(false);
     };
 
     const onError = () => {
       const currentSrc = audio.getAttribute('src');
       if (!currentSrc || currentSrc === "" || currentSrc === window.location.href) {
-        console.log(`${TAG} ⚠️ [onError] Suppressed — no valid src set yet.`);
+        logger.debug(TAG, '⚠️ [onError] Suppressed — no valid src set yet.');
         return;
       }
       const error = audio.error;
@@ -134,13 +135,13 @@ export function useAudioEngine() {
       } else if (error?.code === 2) {
         message = 'Network error during playback';
       }
-      console.group(`${TAG} ❌ [onError] Playback error`);
-      console.error('Error code:', error?.code);
-      console.error('Error message:', error?.message || 'Media Error');
-      console.error('Failed src:', currentSrc);
-      console.error('readyState at error:', audio.readyState);
-      console.groupEnd();
-      console.warn(`${TAG} Audio Engine Notice:`, safeError({
+      logger.group(`${TAG} ❌ [onError] Playback error`, () => {
+        logger.error(TAG, 'Error code:', error?.code);
+        logger.error(TAG, 'Error message:', error?.message || 'Media Error');
+        logger.error(TAG, 'Failed src:', currentSrc);
+        logger.error(TAG, 'readyState at error:', audio.readyState);
+      });
+      logger.warn(TAG, 'Audio Engine Notice:', safeError({
         code: error?.code,
         message: error?.message || 'Media Error',
         src: currentSrc
@@ -173,10 +174,10 @@ export function useAudioEngine() {
       frameRef.current = requestAnimationFrame(update);
     };
     frameRef.current = requestAnimationFrame(update);
-    console.log(`${TAG} 🔄 RAF sync loop started.`);
+    logger.debug(TAG, '🔄 RAF sync loop started.');
 
     return () => {
-      console.log(`${TAG} 🧹 Cleaning up audio engine — pausing, clearing src, removing from DOM, cancelling RAF.`);
+      logger.debug(TAG, '🧹 Cleaning up audio engine — pausing, clearing src, removing from DOM, cancelling RAF.');
       audio.pause();
       audio.removeAttribute('src');
       audio.load();
@@ -194,7 +195,7 @@ export function useAudioEngine() {
       // Remove from DOM if it's still there
       if (audio.parentNode) {
         audio.parentNode.removeChild(audio);
-        console.log(`${TAG} 📍 Audio element removed from DOM`);
+        logger.debug(TAG, '📍 Audio element removed from DOM');
       }
       
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
@@ -209,87 +210,83 @@ export function useAudioEngine() {
         const audio = audioRef.current;
         if (!audio) return;
 
-        console.group(`${TAG} 🎵 Track Change`);
-        console.log('Track object:', track);
-        console.log('downloadUrl array:', track?.downloadUrl);
+        logger.group(`${TAG} 🎵 Track Change`, () => {
+          logger.debug(TAG, 'Track object:', track);
+          logger.debug(TAG, 'downloadUrl array:', track?.downloadUrl);
 
-        if (!track) {
-          console.log(`${TAG} ⚠️ Track is null/undefined. Clearing audio source.`);
-          audio.pause();
-          audio.removeAttribute('src');
-          useEditorStore.getState().setIsPlaying(false);
-          useEditorStore.getState().setIsBuffering(false);
-          useEditorStore.getState().setDuration(0);
-          syncStateRef.current.duration = 0;
-          console.groupEnd();
-          return;
-        }
-
-        // Validate downloadUrl array exists and has entries
-        const downloadUrls = track?.downloadUrl;
-        if (!Array.isArray(downloadUrls) || downloadUrls.length === 0) {
-          console.warn(`${TAG} ⚠️ No valid downloadUrl entries found for track:`, {
-            trackId: track.id,
-            trackName: track.title,
-            downloadUrlType: typeof downloadUrls,
-            downloadUrlLength: downloadUrls?.length
-          });
-          console.groupEnd();
-          return;
-        }
-
-        // track.url from the API is a JioSaavn page link, NOT a streamable audio URL.
-        // Audio URLs must always be sourced exclusively from downloadUrl[].url.
-        // Priority: highest quality (last) → 320kbps → 160kbps → lowest quality fallback
-        const bestQuality = downloadUrls[downloadUrls.length - 1]; // Highest quality (last)
-        const index320 = downloadUrls.find((d) => d.quality === '320kbps');
-        const index160 = downloadUrls.find((d) => d.quality === '160kbps');
-        const fallback = downloadUrls[0]; // Lowest quality
-
-        console.log('Best quality entry (last):', bestQuality);
-        console.log('320kbps entry:', index320);
-        console.log('160kbps entry:', index160);
-        console.log('Fallback entry:', fallback);
-
-        const url = bestQuality?.url || index320?.url || index160?.url || fallback?.url || '';
-        const selectedQuality = bestQuality?.quality ?? index320?.quality ?? index160?.quality ?? fallback?.quality ?? 'unknown';
-        
-        console.log(`Resolved audio URL: "${url}" (quality: ${selectedQuality})`);
-
-        if (url) {
-          console.log(`${TAG} 📥 Setting audio src and calling load()...`);
-          useEditorStore.getState().setIsBuffering(true);
-          useEditorStore.getState().setDuration(0);
-          syncStateRef.current.duration = 0;
-
-          audio.pause();
-          audio.src = url;
-          audio.load();
-
-          console.log(`${TAG} 🔗 audio.src confirmed:`, audio.src);
-          console.log(`${TAG} 📶 readyState after load():`, audio.readyState, '(0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA)');
-
-          if (useEditorStore.getState().isPlaying) {
-            console.log(`${TAG} ▶️ isPlaying=true in store — attempting auto play...`);
-            audio.play().then(() => {
-              console.log(`${TAG} ✅ Auto playback started successfully.`);
-            }).catch((err) => {
-              console.error(`${TAG} ❌ Auto playback failed:`, err);
-            });
-          } else {
-            console.log(`${TAG} ⏸️ isPlaying=false — audio loaded but not auto-playing.`);
+          if (!track) {
+            logger.debug(TAG, '⚠️ Track is null/undefined. Clearing audio source.');
+            audio.pause();
+            audio.removeAttribute('src');
+            useEditorStore.getState().setIsPlaying(false);
+            useEditorStore.getState().setIsBuffering(false);
+            useEditorStore.getState().setDuration(0);
+            syncStateRef.current.duration = 0;
+            return;
           }
-        } else {
-          console.warn(`${TAG} ⚠️ No valid audio URL found in downloadUrl. Clearing audio src.`);
-          audio.pause();
-          audio.removeAttribute('src');
-          useEditorStore.getState().setIsPlaying(false);
-          useEditorStore.getState().setIsBuffering(false);
-          useEditorStore.getState().setDuration(0);
-          syncStateRef.current.duration = 0;
-        }
 
-        console.groupEnd();
+          // Validate downloadUrl array exists and has entries
+          const downloadUrls = track?.downloadUrl;
+          if (!Array.isArray(downloadUrls) || downloadUrls.length === 0) {
+            logger.warn(TAG, '⚠️ No valid downloadUrl entries found for track:', {
+              trackId: track.id,
+              trackName: track.title,
+              downloadUrlType: typeof downloadUrls,
+              downloadUrlLength: downloadUrls?.length
+            });
+            return;
+          }
+
+          // track.url from the API is a JioSaavn page link, NOT a streamable audio URL.
+          // Audio URLs must always be sourced exclusively from downloadUrl[].url.
+          // Priority: highest quality (last) → 320kbps → 160kbps → lowest quality fallback
+          const bestQuality = downloadUrls[downloadUrls.length - 1]; // Highest quality (last)
+          const index320 = downloadUrls.find((d) => d.quality === '320kbps');
+          const index160 = downloadUrls.find((d) => d.quality === '160kbps');
+          const fallback = downloadUrls[0]; // Lowest quality
+
+          logger.debug(TAG, 'Best quality entry (last):', bestQuality);
+          logger.debug(TAG, '320kbps entry:', index320);
+          logger.debug(TAG, '160kbps entry:', index160);
+          logger.debug(TAG, 'Fallback entry:', fallback);
+
+          const url = bestQuality?.url || index320?.url || index160?.url || fallback?.url || '';
+          const selectedQuality = bestQuality?.quality ?? index320?.quality ?? index160?.quality ?? fallback?.quality ?? 'unknown';
+          logger.debug(TAG, `Resolved audio URL: "${url}" (quality: ${selectedQuality})`);
+
+          if (url) {
+            logger.debug(TAG, '📥 Setting audio src and calling load()...');
+            useEditorStore.getState().setIsBuffering(true);
+            useEditorStore.getState().setDuration(0);
+            syncStateRef.current.duration = 0;
+
+            audio.pause();
+            audio.src = url;
+            audio.load();
+
+            logger.debug(TAG, '🔗 audio.src confirmed:', audio.src);
+            logger.debug(TAG, `📶 readyState after load(): ${audio.readyState} (0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA)`);
+
+            if (useEditorStore.getState().isPlaying) {
+              logger.debug(TAG, '▶️ isPlaying=true in store — attempting auto play...');
+              audio.play().then(() => {
+                logger.debug(TAG, '✅ Auto playback started successfully.');
+              }).catch((err) => {
+                logger.error(TAG, '❌ Auto playback failed:', err);
+              });
+            } else {
+              logger.debug(TAG, '⏸️ isPlaying=false — audio loaded but not auto-playing.');
+            }
+          } else {
+            logger.warn(TAG, '⚠️ No valid audio URL found in downloadUrl. Clearing audio src.');
+            audio.pause();
+            audio.removeAttribute('src');
+            useEditorStore.getState().setIsPlaying(false);
+            useEditorStore.getState().setIsBuffering(false);
+            useEditorStore.getState().setDuration(0);
+            syncStateRef.current.duration = 0;
+          }
+        });
       }
     );
   }, []);
@@ -301,23 +298,23 @@ export function useAudioEngine() {
       (playing) => {
         const audio = audioRef.current;
         if (!audio || !audio.src) {
-          console.log(`${TAG} ⏭️ [Playback Sub] Skipped — no audio src set.`);
+          logger.debug(TAG, '⏭️ [Playback Sub] Skipped — no audio src set.');
           return;
         }
-        console.log(`${TAG} 🎛️ [Playback Sub] isPlaying changed to: ${playing}. audio.paused=${audio.paused}`);
+        logger.debug(TAG, `🎛️ [Playback Sub] isPlaying changed to: ${playing}. audio.paused=${audio.paused}`);
         if (playing && audio.paused) {
-          console.log(`${TAG} ▶️ [Playback Sub] Calling audio.play()...`);
+          logger.debug(TAG, '▶️ [Playback Sub] Calling audio.play()...');
           audio.play().then(() => {
-            console.log(`${TAG} ✅ [Playback Sub] Playback started.`);
+            logger.debug(TAG, '✅ [Playback Sub] Playback started.');
           }).catch((err) => {
-            console.error(`${TAG} ❌ [Playback Sub] play() rejected:`, err);
+            logger.error(TAG, '❌ [Playback Sub] play() rejected:', err);
             useEditorStore.getState().setIsPlaying(false);
           });
         } else if (!playing && !audio.paused) {
-          console.log(`${TAG} ⏸️ [Playback Sub] Calling audio.pause().`);
+          logger.debug(TAG, '⏸️ [Playback Sub] Calling audio.pause().');
           audio.pause();
         } else {
-          console.log(`${TAG} ℹ️ [Playback Sub] No action needed (already in desired state).`);
+          logger.debug(TAG, 'ℹ️ [Playback Sub] No action needed (already in desired state).');
         }
       }
     );
@@ -329,7 +326,7 @@ export function useAudioEngine() {
       (state) => ({ volume: state.volume, isMuted: state.isMuted }),
       ({ volume, isMuted }) => {
         if (audioRef.current) {
-          console.log(`${TAG} 🔊 [Volume Sub] volume=${volume}, muted=${isMuted}`);
+          logger.debug(TAG, `🔊 [Volume Sub] volume=${volume}, muted=${isMuted}`);
           audioRef.current.volume = volume;
           audioRef.current.muted = isMuted;
         }
@@ -348,7 +345,7 @@ export function useAudioEngine() {
         // Only seek if the drift is large (user interaction/seek)
         // This prevents the sync loop from fighting with the manual seek
         if (drift > 1.2) {
-          console.log(`${TAG} ⏭️ [Seek Sub] Large drift detected (${drift.toFixed(2)}s) — seeking to ${time}s`);
+          logger.debug(TAG, `⏭️ [Seek Sub] Large drift detected (${drift.toFixed(2)}s) — seeking to ${time}s`);
           audio.currentTime = time;
           syncStateRef.current.currentTime = time;
         }

@@ -8,6 +8,7 @@ import { useDebounceValue } from 'usehooks-ts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { logger } from '@/utils/logger';
 const POPULAR_SEARCHES = ['Shape of You', 'Blinding Lights', 'Night Changes', 'Perfect'];
 export function MusicPanel() {
   const [query, setQuery] = React.useState('');
@@ -21,6 +22,7 @@ export function MusicPanel() {
   const setTrack = useEditorStore((s) => s.setTrack);
   const setRawLrc = useEditorStore((s) => s.setRawLrc);
   const setLyrics = useEditorStore((s) => s.setLyrics);
+  const setIsPlaying = useEditorStore((s) => s.setIsPlaying);
 
   const waitForAudioReady = async (trackId: string, timeout = 5000) => {
     return new Promise<void>((resolve) => {
@@ -65,16 +67,16 @@ export function MusicPanel() {
   }, [debouncedQuery, setIsSearching, setSearchResults]);
   const handleSelectTrack = async (track: any) => {
     try {
-      console.log('[MusicPanel] Track selected:', {
+      logger.debug('MusicPanel', 'Track selected', {
         id: track.id,
         title: track.title,
         artist: track.artist,
         hasDownloadUrl: !!track.downloadUrl,
         downloadUrlLength: track.downloadUrl?.length,
-        downloadUrlSample: track.downloadUrl?.[0],
-        fullTrack: track
+        downloadUrlSample: track.downloadUrl?.[0]
       });
-      
+
+      setIsPlaying(true);
       setTrack(track);
       setRawLrc('');
       setLyrics([]);
@@ -90,7 +92,7 @@ export function MusicPanel() {
         toast.info('No synced lyrics found for this track.');
       }
     } catch (err) {
-      console.error('Track selection error:', err);
+      logger.error('MusicPanel', 'Track selection error', err);
       toast.error('Failed to load track lyrics.');
     }
   };

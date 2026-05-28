@@ -6,6 +6,7 @@ import { DesignPanel } from './DesignPanel';
 import { Music, FileText, Palette, Download, ChevronDown, Zap, Save, FileJson } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Switch } from '@/components/ui/switch';
 import { useEditorStore } from '@/store/useEditorStore';
 import { toast } from 'sonner';
 export function Sidebar() {
@@ -43,6 +44,8 @@ export function Sidebar() {
       description: 'The canvas is currently optimized for HD preview. Recording features are coming in the next update!',
     });
   };
+  const experimentalDebugMode = useEditorStore((s) => s.experimentalDebugMode);
+  const setExperimentalDebugMode = useEditorStore((s) => s.setExperimentalDebugMode);
   return (
     <div className="w-96 border-r bg-card/30 backdrop-blur-xl flex flex-col h-full overflow-hidden shadow-2xl z-40">
       <div className="p-6 pb-4 flex items-center justify-between border-b border-white/5 bg-secondary/10">
@@ -75,6 +78,13 @@ export function Sidebar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
+      <div className="px-6 py-4 border-b border-white/5 bg-secondary/10 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-black">Experimental</p>
+          <p className="text-[10px] text-muted-foreground/70">Enable advanced debug logging in console.</p>
+        </div>
+        <Switch checked={experimentalDebugMode} onCheckedChange={setExperimentalDebugMode} />
       </div>
       <Tabs defaultValue="music" className="flex-1 flex flex-col">
         <div className="px-6 py-4 bg-secondary/5">

@@ -9,10 +9,20 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Menu } from 'lucide-react';
+import { useEffect } from 'react';
+import { useEditorStore } from '@/store/useEditorStore';
+import { logger } from '@/utils/logger';
 export function HomePage() {
   // Always call hooks at top level for stability
   const isMobile = useIsMobile();
+  const debugEnabled = useEditorStore((s) => s.experimentalDebugMode);
+
   useAudioEngine();
+
+  useEffect(() => {
+    logger.setEnabled(debugEnabled);
+  }, [debugEnabled]);
+
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-background">
       {/* Header / Mobile Controls */}

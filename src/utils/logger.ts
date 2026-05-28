@@ -1,8 +1,12 @@
 type LogLevel = "info" | "warn" | "error" | "debug";
 
-const isDev = import.meta.env.DEV;
+let isEnabled = false;
 
 class Logger {
+  setEnabled(value: boolean) {
+    isEnabled = value;
+  }
+
   private format(label: string, message: string) {
     return `%c[${label}] %c${message}`;
   }
@@ -14,8 +18,12 @@ class Logger {
     ];
   }
 
+  private shouldLog(level: LogLevel) {
+    return level === 'error' || isEnabled;
+  }
+
   info(scope: string, message: string, data?: any) {
-    if (!isDev) return;
+    if (!this.shouldLog('info')) return;
     console.log(
       this.format(scope, message),
       ...this.styles("#3b82f6"),
@@ -24,7 +32,7 @@ class Logger {
   }
 
   warn(scope: string, message: string, data?: any) {
-    if (!isDev) return;
+    if (!this.shouldLog('warn')) return;
     console.warn(
       this.format(scope, message),
       ...this.styles("#f59e0b"),
@@ -41,7 +49,7 @@ class Logger {
   }
 
   debug(scope: string, message: string, data?: any) {
-    if (!isDev) return;
+    if (!this.shouldLog('debug')) return;
     console.debug(
       this.format(scope, message),
       ...this.styles("#8b5cf6"),
@@ -50,7 +58,7 @@ class Logger {
   }
 
   group(scope: string, fn: () => void) {
-    if (!isDev) return fn();
+    if (!isEnabled) return fn();
     console.group(`🔽 ${scope}`);
     fn();
     console.groupEnd();
