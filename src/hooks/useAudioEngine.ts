@@ -218,6 +218,7 @@ export function useAudioEngine() {
             logger.debug(TAG, '⚠️ Track is null/undefined. Clearing audio source.');
             audio.pause();
             audio.removeAttribute('src');
+            useEditorStore.getState().setCurrentAudioUrl(null);
             useEditorStore.getState().setIsPlaying(false);
             useEditorStore.getState().setIsBuffering(false);
             useEditorStore.getState().setDuration(0);
@@ -234,8 +235,12 @@ export function useAudioEngine() {
               downloadUrlType: typeof downloadUrls,
               downloadUrlLength: downloadUrls?.length
             });
+            console.warn(`%c[AudioEngine] ⚠️ No downloadUrl for track: ${track.title}`, 'color: red; font-weight: bold;');
             return;
           }
+
+          // Log all available download URLs
+          console.log(`%c[AudioEngine] Available download URLs for "${track.title}":`, 'color: blue; font-weight: bold;', downloadUrls);
 
           // track.url from the API is a JioSaavn page link, NOT a streamable audio URL.
           // Audio URLs must always be sourced exclusively from downloadUrl[].url.
@@ -252,12 +257,16 @@ export function useAudioEngine() {
 
           const url = bestQuality?.url || index320?.url || index160?.url || fallback?.url || '';
           const selectedQuality = bestQuality?.quality ?? index320?.quality ?? index160?.quality ?? fallback?.quality ?? 'unknown';
+          
+          // Always log the selected URL so user can see what's being used
+          console.info(`%c[AudioEngine] Selected URL (quality: ${selectedQuality})`, 'color: green; font-weight: bold;', url);
           logger.debug(TAG, `Resolved audio URL: "${url}" (quality: ${selectedQuality})`);
 
           if (url) {
             logger.debug(TAG, '📥 Setting audio src and calling load()...');
             useEditorStore.getState().setIsBuffering(true);
             useEditorStore.getState().setDuration(0);
+            useEditorStore.getState().setCurrentAudioUrl(url);
             syncStateRef.current.duration = 0;
 
             audio.pause();
@@ -279,8 +288,10 @@ export function useAudioEngine() {
             }
           } else {
             logger.warn(TAG, '⚠️ No valid audio URL found in downloadUrl. Clearing audio src.');
+            console.warn(`%c[AudioEngine] ⚠️ No valid URL could be resolved for track: ${track.title}`, 'color: red; font-weight: bold;');
             audio.pause();
             audio.removeAttribute('src');
+            useEditorStore.getState().setCurrentAudioUrl(null);
             useEditorStore.getState().setIsPlaying(false);
             useEditorStore.getState().setIsBuffering(false);
             useEditorStore.getState().setDuration(0);

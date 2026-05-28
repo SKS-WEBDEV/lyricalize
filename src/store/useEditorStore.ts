@@ -43,6 +43,7 @@ interface EditorState {
   isMuted: boolean;
   isBuffering: boolean;
   experimentalDebugMode: boolean;
+  currentAudioUrl: string | null;
   // Track & Lyrics
   track: Track | null;
   lyrics: LyricLine[];
@@ -63,6 +64,7 @@ interface EditorState {
   setIsMuted: (isMuted: boolean) => void;
   setIsBuffering: (isBuffering: boolean) => void;
   setExperimentalDebugMode: (enabled: boolean) => void;
+  setCurrentAudioUrl: (url: string | null) => void;
   setTrack: (track: Track | null) => void;
   setLyrics: (lyrics: LyricLine[]) => void;
   setRawLrc: (lrc: string) => void;
@@ -81,6 +83,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   isMuted: false,
   isBuffering: false,
   experimentalDebugMode: false,
+  currentAudioUrl: null,
   track: null,
   lyrics: [],
   rawLrc: '',
@@ -109,6 +112,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   setIsMuted: (isMuted) => set({ isMuted }),
   setIsBuffering: (isBuffering) => set({ isBuffering }),
   setExperimentalDebugMode: (enabled) => set({ experimentalDebugMode: enabled }),
+  setCurrentAudioUrl: (url) => set({ currentAudioUrl: url }),
   setTrack: (track) => set({ track }),
   setLyrics: (lyrics) => set({ lyrics }),
   setRawLrc: (lrc) => set({ rawLrc: lrc }),
