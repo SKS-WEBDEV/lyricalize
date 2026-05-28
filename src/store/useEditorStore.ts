@@ -1,4 +1,5 @@
-import { create } from 'zustand';
+import { create, StateCreator } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 export interface LyricLine {
   time: number;
   text: string;
@@ -75,7 +76,8 @@ interface EditorState {
   setSelectedLrcId: (id: number | null) => void;
   setStyle: (style: Partial<TypographyStyle>) => void;
 }
-export const useEditorStore = create<EditorState>((set) => ({
+export const useEditorStore = create<EditorState>(
+  subscribeWithSelector((set) => ({
   isPlaying: false,
   currentTime: 0,
   duration: 0,
@@ -122,4 +124,5 @@ export const useEditorStore = create<EditorState>((set) => ({
   setLrcOptions: (options) => set({ lrcOptions: options }),
   setSelectedLrcId: (id) => set({ selectedLrcId: id }),
   setStyle: (newStyle) => set((state) => ({ style: { ...state.style, ...newStyle } })),
-}));
+  })) as unknown as StateCreator<EditorState>
+);
