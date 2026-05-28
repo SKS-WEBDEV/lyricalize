@@ -10,6 +10,8 @@ const TAG = '[AudioEngine]';
 export function useAudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const frameRef = useRef<number>(0);
+  const objectUrlRef = useRef<string | null>(null);
+  const loadSequenceRef = useRef(0);
   // High-frequency values are tracked in refs to avoid reactive dependency loops
   const syncStateRef = useRef({ 
     currentTime: 0, 
@@ -23,6 +25,61 @@ export function useAudioEngine() {
     setDuration, 
     setIsBuffering 
   } = useEditorStore.getState();
+
+  const fetchAndLoadAudio = async (remoteUrl: string) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const sequence = ++loadSequenceRef.current;
+    logger.info(TAG, `🎧 [fetchAndLoadAudio] Fetching remote audio: ${remoteUrl}`);
+    useEditorStore.getState().setIsBuffering(true);
+
+    try {
+      const response = await fetch(remoteUrl, { mode: 'cors' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+
+      if (loadSequenceRef.current !== sequence) {
+        logger.warn(TAG, '⚠️ [fetchAndLoadAudio] Stale load, discarding object URL.');
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+      }
+      objectUrlRef.current = objectUrl;
+
+      audio.pause();
+      audio.src = objectUrl;
+      audio.load();
+
+      logger.info(TAG, '✅ [fetchAndLoadAudio] Audio loaded into player', {
+        objectUrl,
+        blobType: blob.type,
+        blobSize: blob.size
+      });
+
+      if (useEditorStore.getState().isPlaying) {
+        logger.debug(TAG, '▶️ [fetchAndLoadAudio] isPlaying=true => attempt play');
+        audio.play().then(() => {
+          logger.info(TAG, '✅ [fetchAndLoadAudio] Playback started after fetch.');
+        }).catch((err) => {
+          logger.error(TAG, '❌ [fetchAndLoadAudio] Playback rejected:', err);
+          useEditorStore.getState().setIsPlaying(false);
+        });
+      }
+    } catch (error) {
+      logger.error(TAG, '❌ [fetchAndLoadAudio] Fetch failed:', error);
+      toast.error('Failed to load audio track.');
+      useEditorStore.getState().setIsPlaying(false);
+      useEditorStore.getState().setIsBuffering(false);
+      useEditorStore.getState().setCurrentAudioUrl(null);
+    }
+  };
 
   // Initialization: Setup audio element and event listeners
   useEffect(() => {
@@ -197,6 +254,11 @@ export function useAudioEngine() {
         audio.parentNode.removeChild(audio);
         logger.debug(TAG, '📍 Audio element removed from DOM');
       }
+
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
+      }
       
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
@@ -263,29 +325,13 @@ export function useAudioEngine() {
           logger.debug(TAG, `Resolved audio URL: "${url}" (quality: ${selectedQuality})`);
 
           if (url) {
-            logger.debug(TAG, '📥 Setting audio src and calling load()...');
+            logger.debug(TAG, '📥 Fetching and loading audio via fetch()...');
             useEditorStore.getState().setIsBuffering(true);
             useEditorStore.getState().setDuration(0);
             useEditorStore.getState().setCurrentAudioUrl(url);
             syncStateRef.current.duration = 0;
 
-            audio.pause();
-            audio.src = url;
-            audio.load();
-
-            logger.debug(TAG, '🔗 audio.src confirmed:', audio.src);
-            logger.debug(TAG, `📶 readyState after load(): ${audio.readyState} (0=HAVE_NOTHING, 1=HAVE_METADATA, 2=HAVE_CURRENT_DATA, 3=HAVE_FUTURE_DATA, 4=HAVE_ENOUGH_DATA)`);
-
-            if (useEditorStore.getState().isPlaying) {
-              logger.debug(TAG, '▶️ isPlaying=true in store — attempting auto play...');
-              audio.play().then(() => {
-                logger.debug(TAG, '✅ Auto playback started successfully.');
-              }).catch((err) => {
-                logger.error(TAG, '❌ Auto playback failed:', err);
-              });
-            } else {
-              logger.debug(TAG, '⏸️ isPlaying=false — audio loaded but not auto-playing.');
-            }
+            void fetchAndLoadAudio(url);
           } else {
             logger.warn(TAG, '⚠️ No valid audio URL found in downloadUrl. Clearing audio src.');
             console.warn(`%c[AudioEngine] ⚠️ No valid URL could be resolved for track: ${track.title}`, 'color: red; font-weight: bold;');

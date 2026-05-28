@@ -24,23 +24,6 @@ export function MusicPanel() {
   const setLyrics = useEditorStore((s) => s.setLyrics);
   const setIsPlaying = useEditorStore((s) => s.setIsPlaying);
 
-  const waitForAudioReady = async (trackId: string, timeout = 5000) => {
-    return new Promise<void>((resolve) => {
-      const unsubscribe = (useEditorStore.subscribe as any)(
-        (state: any) => ({ trackId: state.track?.id, duration: state.duration }),
-        (next: { trackId?: string; duration: number }) => {
-          if (next.trackId === trackId && next.duration > 0) {
-            unsubscribe();
-            resolve();
-          }
-        }
-      );
-      setTimeout(() => {
-        unsubscribe();
-        resolve();
-      }, timeout);
-    });
-  };
   useEffect(() => {
     if (!debouncedQuery) {
       setSearchResults([]);
@@ -80,17 +63,25 @@ export function MusicPanel() {
       setTrack(track);
       setRawLrc('');
       setLyrics([]);
-      await waitForAudioReady(track.id);
-      const match = await getBestMatchLyrics(track);
-      if (match) {
-        setRawLrc(match.raw);
-        setLyrics(match.parsed);
-        toast.success('Lyrics synced automatically');
-      } else {
-        setRawLrc('');
-        setLyrics([]);
-        toast.info('No synced lyrics found for this track.');
-      }
+
+      const selectedTrackId = track.id;
+      void (async () => {
+        try {
+          const match = await getBestMatchLyrics(track);
+          if (useEditorStore.getState().track?.id !== selectedTrackId) return;
+          if (match) {
+            setRawLrc(match.raw);
+            setLyrics(match.parsed);
+            toast.success('Lyrics synced automatically');
+          } else {
+            setRawLrc('');
+            setLyrics([]);
+            toast.info('No synced lyrics found for this track.');
+          }
+        } catch (err) {
+          logger.error('MusicPanel', 'Async lyrics load failed', err);
+        }
+      })();
     } catch (err) {
       logger.error('MusicPanel', 'Track selection error', err);
       toast.error('Failed to load track lyrics.');

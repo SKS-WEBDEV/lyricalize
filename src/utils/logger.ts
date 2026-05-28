@@ -1,6 +1,6 @@
 type LogLevel = "info" | "warn" | "error" | "debug";
 
-let isEnabled = false;
+let isEnabled = true;
 
 class Logger {
   setEnabled(value: boolean) {
@@ -19,7 +19,7 @@ class Logger {
   }
 
   private shouldLog(level: LogLevel) {
-    return level === 'error' || isEnabled;
+    return true;
   }
 
   info(scope: string, message: string, data?: any) {
@@ -50,7 +50,7 @@ class Logger {
 
   debug(scope: string, message: string, data?: any) {
     if (!this.shouldLog('debug')) return;
-    console.debug(
+    console.log(
       this.format(scope, message),
       ...this.styles("#8b5cf6"),
       data || ""
@@ -58,7 +58,6 @@ class Logger {
   }
 
   group(scope: string, fn: () => void) {
-    if (!isEnabled) return fn();
     console.group(`🔽 ${scope}`);
     fn();
     console.groupEnd();
