@@ -1,146 +1,237 @@
-# Cloudflare Workers React Template
+# 🎵 Lyricalize
+
+> A full-stack music and lyrics web application — search songs, view synchronized lyrics, and stream audio, all in one place.
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SKS-WEBDEV/lyricalize)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-lyricalize.vercel.app-brightgreen)](https://lyricalize.vercel.app)
+[![TypeScript](https://img.shields.io/badge/TypeScript-94.5%25-blue)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A modern, production-ready full-stack application template built with Cloudflare Workers, React, and TypeScript. This template provides a robust foundation for building scalable web applications with serverless backend capabilities.
+---
 
-## Features
+## 🌟 What is Lyricalize?
 
-- **Serverless Backend**: Powered by Cloudflare Workers with Hono framework for fast API routes
-- **Modern React Frontend**: Built with React 18, React Router, and TanStack Query
-- **Styling & UI**: Tailwind CSS with shadcn/ui components, dark mode support, and smooth animations
-- **Type Safety**: Full TypeScript support across frontend and worker code
-- **Developer Experience**: Hot reloading, ESLint, and Cloudflare-specific tooling
-- **Deployment Ready**: One-click deployment to Cloudflare Workers with automatic asset handling
+Lyricalize is a modern music player web app that lets you search for songs, read lyrics, and listen to tracks — all from a clean, responsive interface. It fetches real-time music data and lyrics via API, plays audio at the best available quality (up to 320kbps), and presents everything in a polished editor-style UI with dark mode support.
 
-## Technology Stack
+---
+
+## ✨ Features
+
+- **Song Search** — Find tracks instantly with a fast, real-time search experience
+- **Lyrics Viewer** — Read synced lyrics for any searched track in the built-in editor panel
+- **Audio Playback** — Stream songs at the highest available quality (12kbps → 320kbps with auto best-quality selection)
+- **Music Panel UI** — Sidebar-style music panel with track info, player controls, and queue management
+- **Dark Mode** — Full dark/light theme support powered by Tailwind CSS
+- **Serverless Backend** — API routes handled by a Cloudflare Worker, keeping the backend fast and scalable
+- **Responsive Design** — Works seamlessly across desktop and mobile browsers
+
+---
+
+## 🛠️ Tech Stack
 
 ### Frontend
-- React 18 with TypeScript
-- Vite for blazing-fast builds and dev server
-- Tailwind CSS with custom design system
-- shadcn/ui components and Radix UI primitives
-- React Router v6 for client-side routing
-- TanStack React Query for data fetching
+| Technology | Role |
+|---|---|
+| React 18 + TypeScript | Core UI framework |
+| Vite | Build tool & dev server |
+| React Router v6 | Client-side routing |
+| TanStack React Query | Data fetching & caching |
+| Tailwind CSS | Styling & theming |
+| shadcn/ui + Radix UI | Accessible component primitives |
+| Zustand | Global audio/track state management |
 
 ### Backend & Infrastructure
-- Cloudflare Workers for serverless compute
-- Hono framework for API routing and middleware
-- Cloudflare KV and Durable Objects support (extensible)
-- Wrangler CLI for local development and deployment
+| Technology | Role |
+|---|---|
+| Cloudflare Workers | Serverless API compute |
+| Hono | Lightweight API routing framework |
+| Wrangler CLI | Local dev & deployment tooling |
 
 ### Developer Tools
-- Bun package manager
-- ESLint with TypeScript rules
-- PostCSS and Autoprefixer
+- **Bun** — Fast package manager & runtime
+- **ESLint** — TypeScript-aware linting
+- **PostCSS + Autoprefixer** — CSS processing
 
-## Getting Started
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Bun (recommended) or Node.js 18+
-- A Cloudflare account (for deployment)
+
+- [Bun](https://bun.sh/) (recommended) or Node.js 18+
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up) (for deployment)
 
 ### Installation
 
-Clone the repository and install dependencies:
-
 ```bash
-git clone <repository-url>
-cd <project-directory>
+git clone https://github.com/SKS-WEBDEV/lyricalize.git
+cd lyricalize
 bun install
 ```
 
 ### Development
 
-Start the local development server:
+Start the local development server (React frontend + Cloudflare Worker API):
 
 ```bash
 bun run dev
 ```
 
-This will launch:
-- Vite dev server for the React frontend
-- Cloudflare Workers local environment for API routes
-- Hot module replacement enabled
+The app will be available at **http://localhost:3000** with hot module replacement enabled.
 
-The application will be available at `http://localhost:3000`.
-
-### Building for Production
-
-Create an optimized production build:
+### Production Build
 
 ```bash
+# Build for production
 bun run build
-```
 
-Preview the production build locally:
-
-```bash
+# Preview production build locally
 bun run preview
 ```
 
-## Project Structure
+---
+
+## 📁 Project Structure
 
 ```
-├── src/                  # React frontend source
-│   ├── components/       # Reusable UI components
-│   ├── pages/            # Route-level page components
-│   ├── hooks/            # Custom React hooks
-│   └── lib/              # Utilities and configuration
-├── worker/               # Cloudflare Worker backend
-│   ├── index.ts          # Main worker entry point
-│   └── userRoutes.ts     # Custom API routes
-├── shared/               # Shared types and utilities
-└── wrangler.jsonc        # Cloudflare configuration
+lyricalize/
+├── src/                          # React frontend
+│   ├── components/
+│   │   └── editor/
+│   │       └── MusicPanel.tsx    # Music player UI panel
+│   ├── hooks/
+│   │   └── useAudioEngine.ts     # Audio playback engine
+│   ├── lib/
+│   │   └── api.ts                # API client & data fetching
+│   ├── pages/                    # Route-level page components
+│   └── main.tsx                  # App entry & routing
+├── worker/
+│   ├── index.ts                  # Cloudflare Worker entry point
+│   └── userRoutes.ts             # Custom API route definitions
+├── public/                       # Static assets
+├── prompts/                      # AI prompt files
+├── wrangler.jsonc                 # Cloudflare Worker configuration
+├── vite.config.ts                # Vite build configuration
+└── tailwind.config.js            # Tailwind theme & design system
 ```
 
-## API Routes
+---
 
-API endpoints are defined in `worker/userRoutes.ts`. All routes are automatically mounted under `/api/*`.
+## 🎧 How Audio Playback Works
 
-Example custom route:
+1. **Search** — User searches for a song; the API returns tracks with validated download URL arrays
+2. **Select** — Clicking a track stores it in Zustand global state
+3. **URL Selection** — The audio engine picks the best available quality:
+   - 🥇 Highest bitrate (preferred)
+   - 🥈 320kbps
+   - 🥉 160kbps
+   - 🔁 Fallback to lowest available
+4. **Playback** — The audio element (mounted in the DOM for full browser compatibility) loads and plays the track
+5. **Events** — Browser fires `loadstart → loadeddata → canplay → playing` in sequence
 
-```ts
+### Download URL Structure (from API)
+
+```json
+{
+  "downloadUrl": [
+    { "quality": "12kbps",  "url": "https://..." },
+    { "quality": "48kbps",  "url": "https://..." },
+    { "quality": "96kbps",  "url": "https://..." },
+    { "quality": "160kbps", "url": "https://..." },
+    { "quality": "320kbps", "url": "https://..." }
+  ]
+}
+```
+
+---
+
+## 🌐 API Routes
+
+All API endpoints are defined in `worker/userRoutes.ts` and mounted under `/api/*`.
+
+```typescript
+// Example custom route
 app.get('/api/hello', (c) => c.json({ message: 'Hello from Workers!' }));
 ```
 
-The template includes built-in routes for health checks and client error reporting.
+Built-in routes include health checks and client error reporting.
 
-## Deployment
+---
+
+## ☁️ Deployment
+
+### One-Click Deploy to Cloudflare
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SKS-WEBDEV/lyricalize)
 
 ### Manual Deployment
 
-Deploy to Cloudflare Workers:
-
 ```bash
+# Authenticate with Cloudflare (first time only)
+bunx wrangler login
+
+# Build and deploy
 bun run deploy
 ```
 
-This command builds the project and deploys using Wrangler.
+Update `wrangler.jsonc` with your Worker name, routes, and any environment variables before deploying.
 
-### Configuration
+---
 
-Update `wrangler.jsonc` with your Worker name, routes, and environment variables as needed.
+## 🔧 Customization
 
-Ensure you have authenticated with Cloudflare:
+| What to change | Where |
+|---|---|
+| UI Components | `src/components/` or add new shadcn/ui components |
+| Theme & Colors | `tailwind.config.js` and `src/index.css` |
+| Frontend Routes | `src/main.tsx` |
+| API Routes | `worker/userRoutes.ts` |
+| App Sidebar | `src/components/app-sidebar.tsx` |
 
-```bash
-bunx wrangler login
+---
+
+## 🐛 Debugging Audio
+
+Open DevTools (F12) and check the console for these logs:
+
+```
+[AudioEngine] 🔧 Audio element created. crossOrigin=anonymous
+[AudioEngine] 📍 Audio element added to DOM
+[AudioEngine] 🎵 Track Change
+[AudioEngine] 📥 Setting audio src and calling load()...
+[AudioEngine] 🔗 audio.src confirmed: https://...
+[MusicPanel] Track selected: {...}
 ```
 
-## Customization
+If audio doesn't play, verify:
+- The browser console for errors
+- Network tab to confirm audio URLs are being fetched
+- Browser audio permissions are enabled
+- Audio file format compatibility (MP4 is broadly supported)
 
-- **UI Components**: Modify components in `src/components/` or add new shadcn/ui components
-- **Styling**: Extend the theme in `tailwind.config.js` and `src/index.css`
-- **Routes**: Add frontend routes in `src/main.tsx` and API routes in `worker/userRoutes.ts`
-- **Sidebar**: Customize or remove the demo sidebar in `src/components/app-sidebar.tsx`
+---
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request for any improvements.
+Contributions are welcome! Please:
 
-## License
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Commit your changes (`git commit -m 'Add my feature'`)
+4. Push to the branch (`git push origin feature/my-feature`)
+5. Open a Pull Request
 
-This project is licensed under the MIT License.
+For major changes, please open an issue first to discuss what you'd like to change.
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🔗 Links
+
+- **Live App**: [lyricalize.vercel.app](https://lyricalize.vercel.app)
+- **Repository**: [github.com/SKS-WEBDEV/lyricalize](https://github.com/SKS-WEBDEV/lyricalize)
