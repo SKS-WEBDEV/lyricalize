@@ -225,6 +225,39 @@ For major changes, please open an issue first to discuss what you'd like to chan
 
 ---
 
+## ⚠️ Legal Disclaimer
+
+> **Please read carefully before using, deploying, or contributing to this project.**
+
+### Educational & Personal Use Only
+
+Lyricalize is an **open-source project intended strictly for educational and personal, non-commercial use**. It was built to demonstrate the integration of modern web technologies including React, Cloudflare Workers, and third-party music APIs.
+
+### Music & Lyrics Content
+
+- Lyricalize does **not** host, store, distribute, or own any music, audio files, or lyrics content.
+- All audio streams and lyrics data are fetched in real-time from **third-party public APIs**. The availability and legality of such content is governed entirely by those third-party services.
+- Song titles, album artwork, artist names, and lyrics are the **intellectual property of their respective rights holders** — including but not limited to record labels, music publishers, and artists.
+- Streaming or downloading copyrighted music without the explicit authorization of the rights holder may violate copyright law in your jurisdiction, including but not limited to the **DMCA (USA)**, the **EU Copyright Directive**, and equivalent legislation worldwide.
+
+### No Affiliation
+
+This project is **not affiliated with, endorsed by, or connected to** any music streaming service, record label, publisher, or any third-party API provider it may consume.
+
+### Third-Party APIs
+
+Users and contributors who deploy this application are solely responsible for ensuring their usage of any third-party APIs complies with those services' **Terms of Service**. The project maintainers accept no liability for misuse of upstream APIs.
+
+### No Warranty
+
+This software is provided **"as is"**, without warranty of any kind, express or implied. The authors and contributors shall not be held liable for any claim, damages, or other liability arising from the use of this software or any content accessed through it.
+
+### Takedown / DMCA Notices
+
+If you are a rights holder and believe your content is being accessed or surfaced inappropriately through this application, please open a GitHub issue or contact the repository owner directly. We will respond promptly.
+
+---
+
 ## 📄 License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
