@@ -2,7 +2,7 @@ import { Track, LyricLine } from '@/store/useEditorStore';
 import { parseLRC } from './lrcParser';
 import { safeError } from './utils';
 
-const SAAVN_API_BASE = 'https://zylaes-saavn.vercel.app/api';
+const SAAVN_API_BASE = 'https://mmade-saavn.onrender.com/api';
 const LRCLIB_API_BASE = 'https://lrclib.net/api';
 
 const normalizeTrackTitle = (title: string): string => {
