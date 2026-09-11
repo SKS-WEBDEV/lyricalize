@@ -2,7 +2,7 @@ import { Track, LyricLine } from '@/store/useEditorStore';
 import { parseLRC } from './lrcParser';
 import { safeError } from './utils';
 
-const SAAVN_API_BASE = 'https://mmade-saavn.onrender.com/api';
+const SAAVN_API_BASE = 'https://zylaes-saavn.vercel.app/api';
 const LRCLIB_API_BASE = 'https://lrclib.net/api';
 
 const normalizeTrackTitle = (title: string): string => {
@@ -36,7 +36,11 @@ export interface LrcOption {
 
 export async function searchTracks(query: string): Promise<Track[]> {
   try {
-    const response = await fetch(`${SAAVN_API_BASE}/search/songs?query=${encodeURIComponent(query)}&limit=15`);
+    const response = await fetch(`${SAAVN_API_BASE}/search/songs?query=${encodeURIComponent(query)}&limit=15`, {
+      headers: {
+        'x-api-key': import.meta.env.SAAVN_API_KEY || '',
+      },
+    });
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }

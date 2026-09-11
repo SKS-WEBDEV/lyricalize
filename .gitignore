@@ -3,3 +3,8 @@
 .bootstrap-complete
 node_modules
 node_modules/@cloudflare/workerd-windows-64/bin/workerd.exe
+
+# Environment variables (contains API keys)
+.env
+.env.local
+.env.*.local

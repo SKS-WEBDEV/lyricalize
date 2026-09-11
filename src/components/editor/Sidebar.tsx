@@ -115,9 +115,7 @@ export function Sidebar() {
           </TabsContent>
         </div>
       </Tabs>
-      <div className="p-4 border-t border-white/5 bg-secondary/20 text-[9px] text-muted-foreground font-black uppercase tracking-[0.2em] text-center">
-        Powered by AI • v1.5 Stable
-      </div>
+
     </div>
   );
 }

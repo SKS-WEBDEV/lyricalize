@@ -149,6 +149,8 @@ export default ({ mode }: { mode: string }) => {
     define: {
       // Define Node.js globals for the agents package
       global: "globalThis",
+      // Inject SAAVN API key (no VITE_ prefix to avoid Vercel public-prefix warning)
+      "import.meta.env.SAAVN_API_KEY": JSON.stringify(env.SAAVN_API_KEY),
     },
     // Clear cache more aggressively
     cacheDir: "node_modules/.vite",

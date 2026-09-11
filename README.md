@@ -99,7 +99,7 @@ lyricalize/
 
 | Variable | Where | Description |
 |----------|-------|-------------|
-| `SAVN_API_KEY` | `.env` / Vercel | API key for [zylaes-saavn](https://zylaes-saavn.vercel.app). Injected at build time via Vite `define`. |
+| `SAAVN_API_KEY` | `.env` / Vercel | API key for [zylaes-saavn](https://zylaes-saavn.vercel.app). Injected at build time via Vite `define`. |
 | `VITE_LOGGER_TYPE` | `.env` | Set to `json` for structured Pino logging in production. |
 
 ## Audio playback
@@ -125,7 +125,7 @@ Two sources, used in sequence:
 
 1. Push to GitHub
 2. Import in Vercel — framework auto-detected as Vite
-3. Add env var `SAVN_API_KEY` in Project Settings
+3. Add env var `SAAVN_API_KEY` in Project Settings
 4. Deploy
 
 ### Cloudflare Workers
