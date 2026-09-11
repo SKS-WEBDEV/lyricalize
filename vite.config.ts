@@ -105,7 +105,7 @@ function reloadTriggerPlugin() {
 export default ({ mode }: { mode: string }) => {
   const env = loadEnv(mode, process.cwd());
   return defineConfig({
-    plugins: [react(), cloudflare(), watchDependenciesPlugin(), reloadTriggerPlugin()],
+    plugins: [react(), ...(process.env.CF_PAGES ? [cloudflare()] : []), watchDependenciesPlugin(), reloadTriggerPlugin()],
     build: {
       minify: true,
       sourcemap: "inline", // Use inline source maps for better error reporting
@@ -114,9 +114,6 @@ export default ({ mode }: { mode: string }) => {
           sourcemapExcludeSources: false, // Include original source in source maps
         },
       },
-    },
-    ssr: {
-      noExternal: ["framer-motion"], // Bundle framer-motion instead of treating as external
     },
     customLogger: env.VITE_LOGGER_TYPE === 'json' ? customLogger : undefined,
     // Enable source maps in development too
