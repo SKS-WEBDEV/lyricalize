@@ -1,67 +1,36 @@
-# 🎵 Lyricalize
+# Lyricalize
 
-> A full-stack music and lyrics web application — search songs, view synchronized lyrics, and stream audio, all in one place.
+A browser-based lyrics editor and music player. Search for a track, get synced lyrics automatically, and play audio — all in a single-page React app backed by a Cloudflare Worker.
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SKS-WEBDEV/lyricalize)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-lyricalize.vercel.app-brightgreen)](https://lyricalize.vercel.app)
-[![TypeScript](https://img.shields.io/badge/TypeScript-94.5%25-blue)](https://www.typescriptlang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
+## How it works
 
-## 🌟 What is Lyricalize?
+1. **Search** a song via the [zylaes-saavn](https://zylaes-saavn.vercel.app) API (JioSaavn)
+2. **Select** a result — the app auto-fetches synced lyrics from [LRCLIB](https://lrclib.net)
+3. **Play** — audio streams directly from the CDN at the best available quality (up to 320kbps)
+4. **Edit** — tweak typography, animation, and sync offset in the Design tab
+5. **Export** — save your session as a JSON project file
 
-Lyricalize is a modern music player web app that lets you search for songs, read lyrics, and listen to tracks — all from a clean, responsive interface. It fetches real-time music data and lyrics via API, plays audio at the best available quality (up to 320kbps), and presents everything in a polished editor-style UI with dark mode support.
+## Stack
 
----
+| Layer | Tech |
+|-------|------|
+| UI | React 18, TypeScript, Tailwind CSS 3, shadcn/ui (Radix primitives) |
+| State | Zustand (audio + track + lyrics + style) |
+| Build | Vite 6, Cloudflare Vite Plugin |
+| Backend | Cloudflare Worker (Hono) — error reporting + health check |
+| Music API | [zylaes-saavn](https://zylaes-saavn.vercel.app) (API key required) |
+| Lyrics API | [LRCLIB](https://lrclib.net) (open, no key needed) |
 
-## ✨ Features
-
-- **Song Search** — Find tracks instantly with a fast, real-time search experience
-- **Lyrics Viewer** — Read synced lyrics for any searched track in the built-in editor panel
-- **Audio Playback** — Stream songs at the highest available quality (12kbps → 320kbps with auto best-quality selection)
-- **Music Panel UI** — Sidebar-style music panel with track info, player controls, and queue management
-- **Dark Mode** — Full dark/light theme support powered by Tailwind CSS
-- **Serverless Backend** — API routes handled by a Cloudflare Worker, keeping the backend fast and scalable
-- **Responsive Design** — Works seamlessly across desktop and mobile browsers
-
----
-
-## 🛠️ Tech Stack
-
-### Frontend
-| Technology | Role |
-|---|---|
-| React 18 + TypeScript | Core UI framework |
-| Vite | Build tool & dev server |
-| React Router v6 | Client-side routing |
-| TanStack React Query | Data fetching & caching |
-| Tailwind CSS | Styling & theming |
-| shadcn/ui + Radix UI | Accessible component primitives |
-| Zustand | Global audio/track state management |
-
-### Backend & Infrastructure
-| Technology | Role |
-|---|---|
-| Cloudflare Workers | Serverless API compute |
-| Hono | Lightweight API routing framework |
-| Wrangler CLI | Local dev & deployment tooling |
-
-### Developer Tools
-- **Bun** — Fast package manager & runtime
-- **ESLint** — TypeScript-aware linting
-- **PostCSS + Autoprefixer** — CSS processing
-
----
-
-## 🚀 Getting Started
+## Setup
 
 ### Prerequisites
 
 - [Bun](https://bun.sh/) (recommended) or Node.js 18+
-- A [Cloudflare account](https://dash.cloudflare.com/sign-up) (for deployment)
+- A [zylaes-saavn API key](https://zylaes-saavn.vercel.app/docs) — set `JIOSAAVN_API_KEYS` in your zylaes-saavn Vercel instance to enable keyed mode
 
-### Installation
+### Install
 
 ```bash
 git clone https://github.com/SKS-WEBDEV/lyricalize.git
@@ -69,202 +38,103 @@ cd lyricalize
 bun install
 ```
 
-### Development
+### Configure
 
-Start the local development server (React frontend + Cloudflare Worker API):
+Create a `.env` file in the project root:
+
+```
+SAAVN_API_KEY=your_api_key_here
+```
+
+Get your key by generating one:
+
+```bash
+bun -e "console.log(crypto.randomBytes(24).toString('hex'))"
+```
+
+Then add it to your zylaes-saavn instance's `JIOSAAVN_API_KEY` environment variable.
+
+### Run
 
 ```bash
 bun run dev
 ```
 
-The app will be available at **http://localhost:3000** with hot module replacement enabled.
+Opens at **http://localhost:3000**.
 
-### Production Build
+### Build & Preview
 
 ```bash
-# Build for production
 bun run build
-
-# Preview production build locally
 bun run preview
 ```
 
----
-
-## 📁 Project Structure
+## Project structure
 
 ```
 lyricalize/
-├── src/                          # React frontend
-│   ├── components/
-│   │   └── editor/
-│   │       └── MusicPanel.tsx    # Music player UI panel
+├── src/
+│   ├── components/editor/
+│   │   ├── Sidebar.tsx         # Tab container (Music / Lyrics / Design)
+│   │   ├── MusicPanel.tsx      # Search + track selection
+│   │   ├── LyricsPanel.tsx     # LRCLIB results + LRC editor + file upload
+│   │   ├── DesignPanel.tsx     # Typography, animation, color controls
+│   │   ├── Canvas.tsx          # Animated lyrics display (Framer Motion)
+│   │   └── BottomPlayer.tsx    # Play/pause, seek, volume, track info
 │   ├── hooks/
-│   │   └── useAudioEngine.ts     # Audio playback engine
+│   │   └── useAudioEngine.ts   # Fetch → ObjectURL → <audio> element lifecycle
 │   ├── lib/
-│   │   └── api.ts                # API client & data fetching
-│   ├── pages/                    # Route-level page components
-│   └── main.tsx                  # App entry & routing
+│   │   ├── api.ts              # zylaes-saavn + LRCLIB fetch functions
+│   │   └── lrcParser.ts        # LRC timestamp parser
+│   └── store/
+│       └── useEditorStore.ts   # Zustand: track, lyrics, style, playback state
 ├── worker/
-│   ├── index.ts                  # Cloudflare Worker entry point
-│   └── userRoutes.ts             # Custom API route definitions
-├── public/                       # Static assets
-├── prompts/                      # AI prompt files
-├── wrangler.jsonc                 # Cloudflare Worker configuration
-├── vite.config.ts                # Vite build configuration
-└── tailwind.config.js            # Tailwind theme & design system
+│   ├── index.ts                # Cloudflare Worker entry (Hono + CORS)
+│   └── userRoutes.ts           # /api/health, /api/client-errors
+├── vite.config.ts              # Vite + Cloudflare plugin + env injection
+└── wrangler.jsonc              # Cloudflare Worker config
 ```
 
----
+## Environment variables
 
-## 🎧 How Audio Playback Works
+| Variable | Where | Description |
+|----------|-------|-------------|
+| `SAVN_API_KEY` | `.env` / Vercel | API key for [zylaes-saavn](https://zylaes-saavn.vercel.app). Injected at build time via Vite `define`. |
+| `VITE_LOGGER_TYPE` | `.env` | Set to `json` for structured Pino logging in production. |
 
-1. **Search** — User searches for a song; the API returns tracks with validated download URL arrays
-2. **Select** — Clicking a track stores it in Zustand global state
-3. **URL Selection** — The audio engine picks the best available quality:
-   - 🥇 Highest bitrate (preferred)
-   - 🥈 320kbps
-   - 🥉 160kbps
-   - 🔁 Fallback to lowest available
-4. **Playback** — The audio element (mounted in the DOM for full browser compatibility) loads and plays the track
-5. **Events** — Browser fires `loadstart → loadeddata → canplay → playing` in sequence
+## Audio playback
 
-### Download URL Structure (from API)
+The engine in `useAudioEngine.ts` works by:
 
-```json
-{
-  "downloadUrl": [
-    { "quality": "12kbps",  "url": "https://..." },
-    { "quality": "48kbps",  "url": "https://..." },
-    { "quality": "96kbps",  "url": "https://..." },
-    { "quality": "160kbps", "url": "https://..." },
-    { "quality": "320kbps", "url": "https://..." }
-  ]
-}
-```
+1. Taking the `downloadUrl[]` array from the search result (CDN links from JioSaavn)
+2. Picking the best quality: highest available → 320kbps → 160kbps → fallback
+3. Fetching the full audio blob via `fetch()` with CORS
+4. Creating an `ObjectURL` and loading it into a DOM `<audio>` element
+5. Syncing playback state to Zustand via `requestAnimationFrame` loop
 
----
+## Lyrics
 
-## 🌐 API Routes
+Two sources, used in sequence:
 
-All API endpoints are defined in `worker/userRoutes.ts` and mounted under `/api/*`.
+- **Auto-match** — on track select, `getBestMatchLyrics()` queries LRCLIB by title + artist, picks the best synced match, and loads it instantly
+- **Manual browse** — the Lyrics tab shows all LRCLIB results; pick any, or upload your own `.lrc` file
 
-```typescript
-// Example custom route
-app.get('/api/hello', (c) => c.json({ message: 'Hello from Workers!' }));
-```
+## Deployment
 
-Built-in routes include health checks and client error reporting.
+### Vercel (SPA)
 
----
+1. Push to GitHub
+2. Import in Vercel — framework auto-detected as Vite
+3. Add env var `SAVN_API_KEY` in Project Settings
+4. Deploy
 
-## ☁️ Deployment
-
-### One-Click Deploy to Cloudflare
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/SKS-WEBDEV/lyricalize)
-
-### Manual Deployment
+### Cloudflare Workers
 
 ```bash
-# Authenticate with Cloudflare (first time only)
 bunx wrangler login
-
-# Build and deploy
 bun run deploy
 ```
 
-Update `wrangler.jsonc` with your Worker name, routes, and any environment variables before deploying.
+## License
 
----
-
-## 🔧 Customization
-
-| What to change | Where |
-|---|---|
-| UI Components | `src/components/` or add new shadcn/ui components |
-| Theme & Colors | `tailwind.config.js` and `src/index.css` |
-| Frontend Routes | `src/main.tsx` |
-| API Routes | `worker/userRoutes.ts` |
-| App Sidebar | `src/components/app-sidebar.tsx` |
-
----
-
-## 🐛 Debugging Audio
-
-Open DevTools (F12) and check the console for these logs:
-
-```
-[AudioEngine] 🔧 Audio element created. crossOrigin=anonymous
-[AudioEngine] 📍 Audio element added to DOM
-[AudioEngine] 🎵 Track Change
-[AudioEngine] 📥 Setting audio src and calling load()...
-[AudioEngine] 🔗 audio.src confirmed: https://...
-[MusicPanel] Track selected: {...}
-```
-
-If audio doesn't play, verify:
-- The browser console for errors
-- Network tab to confirm audio URLs are being fetched
-- Browser audio permissions are enabled
-- Audio file format compatibility (MP4 is broadly supported)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/my-feature`)
-3. Commit your changes (`git commit -m 'Add my feature'`)
-4. Push to the branch (`git push origin feature/my-feature`)
-5. Open a Pull Request
-
-For major changes, please open an issue first to discuss what you'd like to change.
-
----
-
-## ⚠️ Legal Disclaimer
-
-> **Please read carefully before using, deploying, or contributing to this project.**
-
-### Educational & Personal Use Only
-
-Lyricalize is an **open-source project intended strictly for educational and personal, non-commercial use**. It was built to demonstrate the integration of modern web technologies including React, Cloudflare Workers, and third-party music APIs.
-
-### Music & Lyrics Content
-
-- Lyricalize does **not** host, store, distribute, or own any music, audio files, or lyrics content.
-- All audio streams and lyrics data are fetched in real-time from **third-party public APIs**. The availability and legality of such content is governed entirely by those third-party services.
-- Song titles, album artwork, artist names, and lyrics are the **intellectual property of their respective rights holders** — including but not limited to record labels, music publishers, and artists.
-- Streaming or downloading copyrighted music without the explicit authorization of the rights holder may violate copyright law in your jurisdiction, including but not limited to the **DMCA (USA)**, the **EU Copyright Directive**, and equivalent legislation worldwide.
-
-### No Affiliation
-
-This project is **not affiliated with, endorsed by, or connected to** any music streaming service, record label, publisher, or any third-party API provider it may consume.
-
-### Third-Party APIs
-
-Users and contributors who deploy this application are solely responsible for ensuring their usage of any third-party APIs complies with those services' **Terms of Service**. The project maintainers accept no liability for misuse of upstream APIs.
-
-### No Warranty
-
-This software is provided **"as is"**, without warranty of any kind, express or implied. The authors and contributors shall not be held liable for any claim, damages, or other liability arising from the use of this software or any content accessed through it.
-
-### Takedown / DMCA Notices
-
-If you are a rights holder and believe your content is being accessed or surfaced inappropriately through this application, please open a GitHub issue or contact the repository owner directly. We will respond promptly.
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🔗 Links
-
-- **Live App**: [lyricalize.vercel.app](https://lyricalize.vercel.app)
-- **Repository**: [github.com/SKS-WEBDEV/lyricalize](https://github.com/SKS-WEBDEV/lyricalize)
+MIT
